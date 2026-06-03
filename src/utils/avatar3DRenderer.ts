@@ -64,9 +64,10 @@ function drawBlush3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, state:
 }
 
 function drawEyebrows3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, state: AvatarLiveState) {
-  const eyeY = CY - R * 0.15;
-  const browY = eyeY - R * 0.33;
-  const browW = R * 0.38;
+  const spacingMult = config.eyeSpacing ?? 1.0;
+  const eyeY = CY - R * 0.15 * (config.eyeSize ?? 1.0);
+  const browY = eyeY - R * 0.3;
+  const browW = R * 0.36 * (config.eyeSize ?? 1.0);
 
   const liftInner = exprVal(state, e =>
     e === 'surprised' || e === 'love' ? R * 0.07 : e === 'sad' || e === 'cry' ? R * 0.04 : 0);
@@ -75,28 +76,35 @@ function drawEyebrows3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, sta
   const raise = exprVal(state, e => (e === 'surprised' || e === 'love') ? R * 0.05 : 0);
   const smugLeft = exprVal(state, e => e === 'smug' ? R * 0.06 : 0);
 
+  const style = config.eyebrowStyle ?? 'normal';
+  const thickness: Record<string, number> = {
+    normal: R * 0.055, thin: R * 0.028, thick: R * 0.085, arched: R * 0.042, serious: R * 0.075,
+  };
   ctx.strokeStyle = config.eyebrowColor;
-  ctx.lineWidth = R * 0.055;
+  ctx.lineWidth = thickness[style] ?? R * 0.055;
   ctx.lineCap = 'round';
 
   for (const side of [-1, 1]) {
-    const bx = CX + side * R * 0.38;
+    const bx = CX + side * R * 0.38 * spacingMult;
     const leftLift  = side === -1 ? liftInner : liftOuter;
     const rightLift = side === -1 ? liftOuter : liftInner;
     const extraRaise = side === -1 ? smugLeft : 0;
+    const archExtra = style === 'arched' ? R * 0.08 : style === 'serious' ? -R * 0.02 : 0;
 
     ctx.beginPath();
     ctx.moveTo(bx - side * browW / 2, browY - raise - extraRaise + leftLift);
-    ctx.quadraticCurveTo(bx, browY - R * 0.04 - raise - extraRaise * 0.5, bx + side * browW / 2, browY - raise + rightLift);
+    ctx.quadraticCurveTo(bx, browY - R * 0.06 - raise - extraRaise * 0.5 - archExtra, bx + side * browW / 2, browY - raise + rightLift);
     ctx.stroke();
   }
 }
 
 function drawEyes3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, state: AvatarLiveState) {
+  const sizeMult    = config.eyeSize    ?? 1.0;
+  const spacingMult = config.eyeSpacing ?? 1.0;
   const eyeY = CY - R * 0.12;
-  const eyeSpacing = R * 0.4;
-  const eyeW = R * 0.42;
-  const eyeH = config.eyeStyle === 'sleepy' ? R * 0.26 : R * 0.34;
+  const eyeSpacing = R * 0.4 * spacingMult;
+  const eyeW = R * 0.42 * sizeMult;
+  const eyeH = (config.eyeStyle === 'sleepy' ? R * 0.26 : R * 0.34) * sizeMult;
   const sleepyMult = exprVal(state, e => e === 'sleepy' ? 0.3 : 1.0);
   const effectiveH = eyeH * (config.eyeStyle === 'sleepy' ? 1 : sleepyMult <= 0.3 ? lerp(1, 0.3, 1 - sleepyMult) : 1);
 
@@ -253,17 +261,27 @@ function drawSingleEye3D(
 }
 
 function drawNose3D(ctx: CanvasRenderingContext2D, config: AvatarConfig) {
-  ctx.fillStyle = alpha(darken(config.skinColor, 25), 0.55);
-  for (const side of [-1, 1]) {
+  const style = config.noseStyle ?? 'dot';
+  if (style === 'none') return;
+  ctx.fillStyle = alpha(darken(config.skinColor, 28), 0.6);
+  if (style === 'dot') {
     ctx.beginPath();
-    ctx.ellipse(CX + side * R * 0.065, CY + R * 0.15, R * 0.035, R * 0.022, 0, 0, Math.PI * 2);
+    ctx.ellipse(CX, CY + R * 0.13, R * 0.025, R * 0.016, 0, 0, Math.PI * 2);
     ctx.fill();
+  } else {
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(CX + side * R * 0.065, CY + R * 0.15, R * 0.035, R * 0.022, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }
 
 function drawMouth3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, state: AvatarLiveState) {
   const my = CY + R * 0.42;
-  const mW = R * 0.38;
+  const mW = R * 0.38 * (config.mouthSize ?? 1.0);
+  // Tongue forces jaw slightly open so it's always visible
+  const effectiveMouthOpen = Math.max(state.mouthOpen, state.tongueOut * 0.55);
 
   const curvature = exprVal(state, e => {
     if (e === 'happy' || e === 'blushing' || e === 'love' || e === 'laugh') return 0.38;
@@ -280,7 +298,7 @@ function drawMouth3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, state:
   const isSmug = exprVal(state, e => e === 'smug' ? 1 : 0);
 
   if (isSurprised > 0.5) {
-    const ow = mW * 0.38; const oh = ow * 0.5 + state.mouthOpen * R * 0.18;
+    const ow = mW * 0.38; const oh = ow * 0.5 + effectiveMouthOpen * R * 0.18;
     ctx.beginPath(); ctx.ellipse(CX, my + oh * 0.1, ow, oh, 0, 0, Math.PI * 2);
     ctx.fillStyle = '#6b1a33'; ctx.fill();
     ctx.strokeStyle = config.lipColor; ctx.lineWidth = R * 0.03; ctx.stroke();
@@ -300,17 +318,17 @@ function drawMouth3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, state:
   else if (v === 'oo') { wMod = 0.55; hMod = 0.9; }
   else if (v === 'mm') { wMod = 0.9; hMod = 0; }
 
-  const openH = R * 0.16 * state.mouthOpen * hMod;
+  const openH = R * 0.16 * effectiveMouthOpen * hMod;
   const effectiveW = mW * wMod;
   const curveY = my + curvature * R * 0.22;
 
   // Round mouth (oh/oo)
-  if ((v === 'oh' || v === 'oo') && state.mouthOpen > 0.05) {
+  if ((v === 'oh' || v === 'oo') && effectiveMouthOpen > 0.04) {
     ctx.beginPath();
     ctx.ellipse(mcx, my + openH * 0.4, effectiveW * 0.45, openH * 0.6, 0, 0, Math.PI * 2);
     ctx.fillStyle = '#6b1a33'; ctx.fill();
     ctx.strokeStyle = config.lipColor; ctx.lineWidth = R * 0.035; ctx.stroke();
-  } else if (state.mouthOpen > 0.05 && v !== 'mm') {
+  } else if (effectiveMouthOpen > 0.04 && v !== 'mm') {
     // Open mouth interior
     ctx.beginPath();
     ctx.moveTo(mcx - effectiveW / 2, my);
@@ -319,7 +337,7 @@ function drawMouth3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, state:
     ctx.fillStyle = '#6b1a33'; ctx.fill();
 
     // Teeth
-    if (state.mouthOpen > 0.25 && v !== 'oo') {
+    if (effectiveMouthOpen > 0.2 && v !== 'oo') {
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(mcx - effectiveW / 2, my);
@@ -331,13 +349,21 @@ function drawMouth3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, state:
       ctx.restore();
     }
 
-    // Tongue
-    if (state.tongueOut > 0.2) {
-      const tongueAlpha = (state.tongueOut - 0.2) / 0.8;
-      ctx.fillStyle = alpha('#e87a9a', tongueAlpha);
+    // Tongue — extends out of mouth as tongueOut increases
+    if (state.tongueOut > 0.08) {
+      const tongueAmt  = Math.min(1, (state.tongueOut - 0.08) / 0.5);
+      const tongueExtY = tongueAmt * openH * 0.5;  // protrudes below mouth
+      ctx.fillStyle = alpha('#e0607a', tongueAmt * 0.95);
       ctx.beginPath();
-      ctx.ellipse(mcx, my + openH * 0.75, effectiveW * 0.28, openH * 0.32, 0, 0, Math.PI * 2);
+      ctx.ellipse(mcx, my + openH * 0.65 + tongueExtY, effectiveW * 0.3, openH * 0.42 + tongueExtY, 0, 0, Math.PI * 2);
       ctx.fill();
+      // Tongue groove
+      ctx.strokeStyle = alpha('#c0405a', tongueAmt * 0.5);
+      ctx.lineWidth = effectiveW * 0.04;
+      ctx.beginPath();
+      ctx.moveTo(mcx, my + openH * 0.38);
+      ctx.lineTo(mcx, my + openH * 0.9 + tongueExtY);
+      ctx.stroke();
     }
   }
 
@@ -349,7 +375,7 @@ function drawMouth3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, state:
   ctx.strokeStyle = config.lipColor; ctx.lineWidth = R * 0.045; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   ctx.stroke();
 
-  if (state.mouthOpen > 0.05 || Math.abs(curvature) > 0.15) {
+  if (effectiveMouthOpen > 0.04 || Math.abs(curvature) > 0.15) {
     ctx.beginPath();
     ctx.moveTo(mcx - effectiveW * 0.4, my + openH * 0.45);
     ctx.quadraticCurveTo(mcx, my + openH * 0.9 + curvature * R * 0.1, mcx + effectiveW * 0.4, my + openH * 0.45);
@@ -435,7 +461,7 @@ function buildHair(config: AvatarConfig): THREE.Group {
 
   if (style === 'long' || style === 'bob') {
     // Cap (half-sphere)
-    const capGeo = new THREE.SphereGeometry(1.08, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    const capGeo = new THREE.SphereGeometry(1.08, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.46);
     addMesh(capGeo, [0, 0.28, 0]);
 
     // Side strands
@@ -451,7 +477,7 @@ function buildHair(config: AvatarConfig): THREE.Group {
     }
 
   } else if (style === 'short') {
-    const capGeo = new THREE.SphereGeometry(1.08, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    const capGeo = new THREE.SphereGeometry(1.08, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.44);
     addMesh(capGeo, [0, 0.28, 0]);
     // 4 short bangs
     const bangPositions: [number, number, number][] = [[-0.5, -0.62, 0.82], [-0.16, -0.58, 0.88], [0.16, -0.58, 0.88], [0.5, -0.62, 0.82]];
@@ -461,7 +487,7 @@ function buildHair(config: AvatarConfig): THREE.Group {
     }
 
   } else if (style === 'twintails') {
-    const capGeo = new THREE.SphereGeometry(1.08, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.52);
+    const capGeo = new THREE.SphereGeometry(1.08, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.46);
     addMesh(capGeo, [0, 0.28, 0]);
     // Twintail cylinders
     for (const side of [-1, 1]) {
@@ -477,17 +503,39 @@ function buildHair(config: AvatarConfig): THREE.Group {
     }
 
   } else if (style === 'ponytail') {
-    const capGeo = new THREE.SphereGeometry(1.08, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.52);
+    const capGeo = new THREE.SphereGeometry(1.08, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.46);
     addMesh(capGeo, [0, 0.28, 0]);
-    // Ponytail going back-down
     const ptGeo = new THREE.CylinderGeometry(0.2, 0.1, 2.5, 10);
     addMesh(ptGeo, [0, -0.2, -0.6], [-0.55, 0, 0]);
-    // Hair tie torus
     const tieMat = new THREE.MeshPhongMaterial({ color: new THREE.Color(config.accentColor), shininess: 60 });
     const tieGeo = new THREE.TorusGeometry(0.22, 0.06, 8, 20);
     const tie = new THREE.Mesh(tieGeo, tieMat);
     tie.position.set(0, 0.52, -0.4); tie.rotation.set(-0.55, 0, 0);
     group.add(tie);
+
+  } else if (style === 'bun') {
+    const capGeo = new THREE.SphereGeometry(1.08, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.46);
+    addMesh(capGeo, [0, 0.28, 0]);
+    // Bun
+    addMesh(new THREE.SphereGeometry(0.42, 20, 20), [0, 1.42, -0.38]);
+    // Stem
+    addMesh(new THREE.CylinderGeometry(0.16, 0.20, 0.28, 10), [0, 1.18, -0.22], [0.35, 0, 0]);
+    // Accent tie
+    const tieMat2 = new THREE.MeshPhongMaterial({ color: new THREE.Color(config.accentColor), shininess: 60 });
+    const tieGeo2 = new THREE.TorusGeometry(0.26, 0.07, 8, 20);
+    const tie2 = new THREE.Mesh(tieGeo2, tieMat2);
+    tie2.position.set(0, 1.18, -0.24); tie2.rotation.set(-0.35, 0, 0);
+    group.add(tie2);
+
+  } else if (style === 'wavy') {
+    const capGeo = new THREE.SphereGeometry(1.08, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.46);
+    addMesh(capGeo, [0, 0.28, 0]);
+    for (const side of [-1, 1]) {
+      addMesh(new THREE.CylinderGeometry(0.22, 0.20, 1.0, 10), [side * 1.0, -0.15, 0.08], [0, 0, side * 0.14]);
+      addMesh(new THREE.CylinderGeometry(0.20, 0.18, 1.0, 10), [side * 0.86, -1.08, -0.08], [0, 0, -side * 0.10]);
+      addMesh(new THREE.CylinderGeometry(0.18, 0.13, 1.0, 10), [side * 1.0, -2.00,  0.06], [0, 0, side * 0.12]);
+    }
+    addMesh(new THREE.CylinderGeometry(0.52, 0.38, 2.0, 12), [0, -0.75, -0.32], [0.12, 0, 0]);
   }
 
   return group;
@@ -691,8 +739,10 @@ function buildBody(config: AvatarConfig): THREE.Group {
   neck.position.set(0, -1.3, 0);
   group.add(neck);
 
-  // Shoulders/chest
-  const bodyGeo = new THREE.BoxGeometry(2.2, 2.0, 0.65);
+  // Shoulders/chest — scaled by bodyType
+  const bW = config.bodyType === 'slim' ? 1.9 : config.bodyType === 'curvy' ? 2.5 : 2.2;
+  const bD = config.bodyType === 'slim' ? 0.55 : config.bodyType === 'curvy' ? 0.80 : 0.65;
+  const bodyGeo = new THREE.BoxGeometry(bW, 2.0, bD);
   const bodyMat = new THREE.MeshToonMaterial({ color: new THREE.Color(config.outfitColor) });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
   body.position.set(0, -2.35, 0);
@@ -809,12 +859,12 @@ export class Avatar3DRenderer {
     this.rootGroup.add(this.headGroup);
 
     // Head mesh
-    const headMeshes = buildHead({ skinColor: '#fde8d0', hairColor: '', hairHighlightColor: '', hairStyle: 'long', eyeColor: '', eyeStyle: 'round', eyeDecoration: 'normal', accessories: [], bonusAccessories: [], skinMarkings: [], outfitColor: '', outfitStyle: 'casual', accentColor: '', blushColor: '', eyebrowColor: '', lipColor: '' });
+    const headMeshes = buildHead({ skinColor: '#fde8d0', hairColor: '', hairHighlightColor: '', hairStyle: 'long', eyeColor: '', eyeStyle: 'round', eyeDecoration: 'normal', accessories: [], bonusAccessories: [], skinMarkings: [], outfitColor: '', outfitStyle: 'casual', accentColor: '', blushColor: '', eyebrowColor: '', lipColor: '', eyeSize: 1, eyeSpacing: 1, eyebrowStyle: 'normal', noseStyle: 'dot', mouthSize: 1, bodyType: 'average', background: 'none' });
     this.headGroup.add(headMeshes);
 
     // Face plane (inside headGroup)
     const facePlaneGeo = new THREE.PlaneGeometry(2.0, 2.0);
-    const facePlaneMat = new THREE.MeshBasicMaterial({ map: this.faceTex, transparent: true, depthWrite: false });
+    const facePlaneMat = new THREE.MeshBasicMaterial({ map: this.faceTex, transparent: true, depthWrite: false, depthTest: false });
     const facePlane = new THREE.Mesh(facePlaneGeo, facePlaneMat);
     facePlane.renderOrder = 1;
     facePlane.position.set(0, 0.15, 0.93);
@@ -837,12 +887,29 @@ export class Avatar3DRenderer {
 
   render(config: AvatarConfig, state: AvatarLiveState, handLandmarks?: Array<{ x: number; y: number; z: number }[]> | null): void {
     // Rebuild structural meshes only when config changes
+    // Apply background
+    const bg = config.background ?? 'none';
+    if (bg === 'none') {
+      this.scene.background = null;
+    } else if (bg === 'gradient') {
+      this.scene.background = new THREE.Color(0x1a0a2e);
+    } else if (bg === 'stars') {
+      this.scene.background = new THREE.Color(0x050510);
+    } else if (bg === 'holographic') {
+      this.scene.background = new THREE.Color(0x0a1a2a);
+    } else if (bg === 'sakura') {
+      this.scene.background = new THREE.Color(0x1a0a14);
+    } else if (bg === 'rain') {
+      this.scene.background = new THREE.Color(0x080c14);
+    }
+
     const sig = JSON.stringify({
       skinColor: config.skinColor, hairColor: config.hairColor, hairHighlightColor: config.hairHighlightColor,
       hairStyle: config.hairStyle, eyeColor: config.eyeColor, eyeStyle: config.eyeStyle,
       eyeDecoration: config.eyeDecoration, accessories: config.accessories, bonusAccessories: config.bonusAccessories,
       outfitColor: config.outfitColor, outfitStyle: config.outfitStyle, accentColor: config.accentColor,
       blushColor: config.blushColor, eyebrowColor: config.eyebrowColor, lipColor: config.lipColor,
+      bodyType: config.bodyType,
     });
 
     if (sig !== this.configSig) {
@@ -888,7 +955,7 @@ export class Avatar3DRenderer {
 
     // Face plane
     const facePlaneGeo = new THREE.PlaneGeometry(2.0, 2.0);
-    const facePlaneMat = new THREE.MeshBasicMaterial({ map: this.faceTex, transparent: true, depthWrite: false });
+    const facePlaneMat = new THREE.MeshBasicMaterial({ map: this.faceTex, transparent: true, depthWrite: false, depthTest: false });
     const facePlane = new THREE.Mesh(facePlaneGeo, facePlaneMat);
     facePlane.renderOrder = 1;
     facePlane.position.set(0, 0.15, 0.93);

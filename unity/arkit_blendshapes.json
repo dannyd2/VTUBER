@@ -1,0 +1,141 @@
+{
+  "_comment": "ARKit 52 BlendShape → VRM 1.0 ExpressionPreset mapping config",
+  "_usage": "Load via VRMBlendShapeProxy. Each entry maps an ARKit name to one or more VRM blend shapes with a multiplier and optional clamp.",
+
+  "version": "1.0.0",
+  "sourceFormat": "ARKit",
+  "targetFormat": "VRM1.0",
+
+  "mappings": [
+
+    { "arkit": "eyeBlinkLeft",     "vrm": [{ "name": "blinkLeft",  "weight": 1.0 }] },
+    { "arkit": "eyeBlinkRight",    "vrm": [{ "name": "blinkRight", "weight": 1.0 }] },
+
+    { "arkit": "eyeSquintLeft",    "vrm": [{ "name": "blinkLeft",  "weight": 0.45 }] },
+    { "arkit": "eyeSquintRight",   "vrm": [{ "name": "blinkRight", "weight": 0.45 }] },
+
+    { "arkit": "eyeWideLeft",      "vrm": [
+      { "name": "blinkLeft",  "weight": -0.4, "clamp": [0.0, 0.0] }
+    ]},
+    { "arkit": "eyeWideRight",     "vrm": [
+      { "name": "blinkRight", "weight": -0.4, "clamp": [0.0, 0.0] }
+    ]},
+
+    { "arkit": "eyeLookUpLeft",    "vrm": [{ "name": "lookUp",    "weight": 0.55 }] },
+    { "arkit": "eyeLookUpRight",   "vrm": [{ "name": "lookUp",    "weight": 0.55 }] },
+    { "arkit": "eyeLookDownLeft",  "vrm": [{ "name": "lookDown",  "weight": 0.55 }] },
+    { "arkit": "eyeLookDownRight", "vrm": [{ "name": "lookDown",  "weight": 0.55 }] },
+    { "arkit": "eyeLookInLeft",    "vrm": [{ "name": "lookRight", "weight": 0.6  }] },
+    { "arkit": "eyeLookOutLeft",   "vrm": [{ "name": "lookLeft",  "weight": 0.6  }] },
+    { "arkit": "eyeLookInRight",   "vrm": [{ "name": "lookLeft",  "weight": 0.6  }] },
+    { "arkit": "eyeLookOutRight",  "vrm": [{ "name": "lookRight", "weight": 0.6  }] },
+
+    { "arkit": "browInnerUp",      "vrm": [
+      { "name": "browInnerUpLeft",  "weight": 0.8 },
+      { "name": "browInnerUpRight", "weight": 0.8 }
+    ]},
+    { "arkit": "browOuterUpLeft",  "vrm": [{ "name": "browOuterUpLeft",  "weight": 0.9 }] },
+    { "arkit": "browOuterUpRight", "vrm": [{ "name": "browOuterUpRight", "weight": 0.9 }] },
+    { "arkit": "browDownLeft",     "vrm": [
+      { "name": "browDownLeft",  "weight": 1.0 },
+      { "name": "angry",         "weight": 0.25 }
+    ]},
+    { "arkit": "browDownRight",    "vrm": [
+      { "name": "browDownRight", "weight": 1.0 },
+      { "name": "angry",         "weight": 0.25 }
+    ]},
+
+    { "arkit": "jawOpen",          "vrm": [{ "name": "aa", "weight": 0.9 }] },
+    { "arkit": "jawForward",       "vrm": [] },
+    { "arkit": "jawLeft",          "vrm": [{ "name": "jawLeft",  "weight": 0.5 }] },
+    { "arkit": "jawRight",         "vrm": [{ "name": "jawRight", "weight": 0.5 }] },
+
+    { "arkit": "mouthClose",       "vrm": [{ "name": "mm",  "weight": 0.7  }] },
+    { "arkit": "mouthFunnel",      "vrm": [{ "name": "ou",  "weight": 0.85 }] },
+    { "arkit": "mouthPucker",      "vrm": [{ "name": "oo",  "weight": 0.9  }] },
+    { "arkit": "mouthLeft",        "vrm": [{ "name": "mouthLeft",  "weight": 0.6 }] },
+    { "arkit": "mouthRight",       "vrm": [{ "name": "mouthRight", "weight": 0.6 }] },
+
+    { "arkit": "mouthSmileLeft",   "vrm": [
+      { "name": "happy",     "weight": 0.55 },
+      { "name": "mouthSmileLeft", "weight": 0.7 }
+    ]},
+    { "arkit": "mouthSmileRight",  "vrm": [
+      { "name": "happy",      "weight": 0.55 },
+      { "name": "mouthSmileRight", "weight": 0.7 }
+    ]},
+
+    { "arkit": "mouthFrownLeft",   "vrm": [
+      { "name": "sad",       "weight": 0.45 },
+      { "name": "mouthFrownLeft", "weight": 0.8 }
+    ]},
+    { "arkit": "mouthFrownRight",  "vrm": [
+      { "name": "sad",       "weight": 0.45 },
+      { "name": "mouthFrownRight", "weight": 0.8 }
+    ]},
+
+    { "arkit": "mouthDimpleLeft",  "vrm": [{ "name": "mouthDimpleLeft",  "weight": 0.7 }] },
+    { "arkit": "mouthDimpleRight", "vrm": [{ "name": "mouthDimpleRight", "weight": 0.7 }] },
+
+    { "arkit": "mouthStretchLeft", "vrm": [{ "name": "mouthStretchLeft",  "weight": 0.65 }] },
+    { "arkit": "mouthStretchRight","vrm": [{ "name": "mouthStretchRight", "weight": 0.65 }] },
+
+    { "arkit": "mouthRollUpper",   "vrm": [{ "name": "mouthRollUpper",   "weight": 0.7 }] },
+    { "arkit": "mouthRollLower",   "vrm": [{ "name": "mouthRollLower",   "weight": 0.7 }] },
+    { "arkit": "mouthShrugUpper",  "vrm": [{ "name": "mouthShrugUpper",  "weight": 0.6 }] },
+    { "arkit": "mouthShrugLower",  "vrm": [{ "name": "mouthShrugLower",  "weight": 0.6 }] },
+
+    { "arkit": "mouthPressLeft",   "vrm": [{ "name": "mouthPressLeft",   "weight": 0.65 }] },
+    { "arkit": "mouthPressRight",  "vrm": [{ "name": "mouthPressRight",  "weight": 0.65 }] },
+
+    { "arkit": "mouthLowerDownLeft",  "vrm": [{ "name": "mouthLowerDownLeft",  "weight": 0.75 }] },
+    { "arkit": "mouthLowerDownRight", "vrm": [{ "name": "mouthLowerDownRight", "weight": 0.75 }] },
+    { "arkit": "mouthUpperUpLeft",    "vrm": [{ "name": "mouthUpperUpLeft",    "weight": 0.75 }] },
+    { "arkit": "mouthUpperUpRight",   "vrm": [{ "name": "mouthUpperUpRight",   "weight": 0.75 }] },
+
+    { "arkit": "cheekPuff",        "vrm": [{ "name": "cheekPuff", "weight": 0.8 }] },
+    { "arkit": "cheekSquintLeft",  "vrm": [
+      { "name": "blinkLeft", "weight": 0.28 },
+      { "name": "happy",     "weight": 0.18 }
+    ]},
+    { "arkit": "cheekSquintRight", "vrm": [
+      { "name": "blinkRight","weight": 0.28 },
+      { "name": "happy",     "weight": 0.18 }
+    ]},
+
+    { "arkit": "noseSneerLeft",    "vrm": [
+      { "name": "angry",    "weight": 0.3 },
+      { "name": "noseSneerLeft", "weight": 0.6 }
+    ]},
+    { "arkit": "noseSneerRight",   "vrm": [
+      { "name": "angry",    "weight": 0.3 },
+      { "name": "noseSneerRight", "weight": 0.6 }
+    ]},
+
+    { "arkit": "tongueOut",        "vrm": [{ "name": "tongueOut", "weight": 6.0, "clamp": [0.0, 1.0] }] }
+  ],
+
+  "expressionPresets": {
+    "neutral":   {},
+    "happy":     { "mouthSmileLeft": 0.8, "mouthSmileRight": 0.8, "cheekSquintLeft": 0.4, "cheekSquintRight": 0.4 },
+    "sad":       { "mouthFrownLeft": 0.8, "mouthFrownRight": 0.8, "browInnerUp": 0.5 },
+    "angry":     { "browDownLeft": 0.9, "browDownRight": 0.9, "mouthFrownLeft": 0.3, "mouthFrownRight": 0.3, "noseSneerLeft": 0.4, "noseSneerRight": 0.4 },
+    "surprised": { "browInnerUp": 0.9, "browOuterUpLeft": 0.7, "browOuterUpRight": 0.7, "eyeWideLeft": 0.8, "eyeWideRight": 0.8, "jawOpen": 0.5 },
+    "blushing":  { "mouthSmileLeft": 0.4, "mouthSmileRight": 0.4, "cheekSquintLeft": 0.6, "cheekSquintRight": 0.6 },
+    "wink":      { "eyeBlinkLeft": 1.0, "mouthSmileLeft": 0.3, "mouthSmileRight": 0.5 },
+    "love":      { "eyeSquintLeft": 0.6, "eyeSquintRight": 0.6, "mouthSmileLeft": 0.9, "mouthSmileRight": 0.9, "cheekSquintLeft": 0.7, "cheekSquintRight": 0.7 },
+    "sleepy":    { "eyeBlinkLeft": 0.55, "eyeBlinkRight": 0.55, "mouthPucker": 0.2 },
+    "laugh":     { "jawOpen": 0.5, "mouthSmileLeft": 1.0, "mouthSmileRight": 1.0, "eyeSquintLeft": 0.5, "eyeSquintRight": 0.5 },
+    "cry":       { "eyeSquintLeft": 0.5, "eyeSquintRight": 0.5, "mouthFrownLeft": 0.7, "mouthFrownRight": 0.7, "browInnerUp": 0.8 },
+    "smug":      { "mouthSmileLeft": 0.2, "mouthSmileRight": 0.6, "browDownLeft": 0.3, "eyeSquintLeft": 0.3 }
+  },
+
+  "lipsyncVisemes": {
+    "rest": {},
+    "aa": { "jawOpen": 0.8, "mouthLowerDownLeft": 0.6, "mouthLowerDownRight": 0.6 },
+    "oh": { "jawOpen": 0.5, "mouthFunnel": 0.7 },
+    "ee": { "mouthStretchLeft": 0.7, "mouthStretchRight": 0.7, "mouthSmileLeft": 0.2, "mouthSmileRight": 0.2 },
+    "oo": { "mouthPucker": 0.9, "jawOpen": 0.2 },
+    "mm": { "mouthClose": 0.8, "mouthPressLeft": 0.4, "mouthPressRight": 0.4 }
+  }
+}

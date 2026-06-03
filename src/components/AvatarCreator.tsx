@@ -1,5 +1,8 @@
 import { useCallback } from 'react';
-import type { AvatarConfig, AvatarLiveState, HairStyle, EyeStyle, Accessory, BonusAccessory, SkinMarking, EyeDecoration } from '../types/avatar';
+import type {
+  AvatarConfig, AvatarLiveState, HairStyle, EyeStyle, EyebrowStyle,
+  NoseStyle, BodyType, BackgroundStyle, Accessory, BonusAccessory, SkinMarking, EyeDecoration,
+} from '../types/avatar';
 import { DEFAULT_LIVE_STATE } from '../types/avatar';
 import { Avatar3DCanvas } from './Avatar3DCanvas';
 
@@ -8,52 +11,87 @@ interface Props {
   onChange: (config: AvatarConfig) => void;
 }
 
-const PREVIEW_STATE: AvatarLiveState = { ...DEFAULT_LIVE_STATE, expression: 'happy', expressionBlend: 1, headRotX: 0, headRotY: 0, tongueOut: 0 };
+const PREVIEW_STATE: AvatarLiveState = {
+  ...DEFAULT_LIVE_STATE, expression: 'happy', expressionBlend: 1,
+  headRotX: 0, headRotY: 0, tongueOut: 0,
+};
 
 const HAIR_STYLES: { value: HairStyle; label: string }[] = [
-  { value: 'long', label: 'Long' }, { value: 'short', label: 'Short' },
-  { value: 'bob', label: 'Bob' }, { value: 'twintails', label: 'Twin Tails' }, { value: 'ponytail', label: 'Ponytail' },
+  { value: 'long',      label: 'Long' },
+  { value: 'short',     label: 'Short' },
+  { value: 'bob',       label: 'Bob' },
+  { value: 'twintails', label: 'Twin Tails' },
+  { value: 'ponytail',  label: 'Ponytail' },
+  { value: 'bun',       label: 'Bun' },
+  { value: 'wavy',      label: 'Wavy' },
 ];
-const EYE_STYLES: { value: EyeStyle; label: string }[] = [
-  { value: 'round', label: 'Round' }, { value: 'almond', label: 'Almond' }, { value: 'sleepy', label: 'Sleepy' },
+const EYE_STYLES:  { value: EyeStyle;     label: string }[] = [
+  { value: 'round',  label: 'Round' },
+  { value: 'almond', label: 'Almond' },
+  { value: 'sleepy', label: 'Sleepy' },
 ];
-const EYE_DECOS: { value: EyeDecoration; label: string }[] = [
-  { value: 'normal', label: 'Normal' }, { value: 'sparkle', label: 'Sparkle ✨' },
-  { value: 'star', label: 'Star ⭐' }, { value: 'heart', label: 'Heart 💜' },
+const EYE_DECOS:   { value: EyeDecoration; label: string }[] = [
+  { value: 'normal',  label: 'Normal' },
+  { value: 'sparkle', label: 'Sparkle ✨' },
+  { value: 'star',    label: 'Star ⭐' },
+  { value: 'heart',   label: 'Heart 💜' },
+];
+const BROW_STYLES: { value: EyebrowStyle; label: string }[] = [
+  { value: 'normal',  label: 'Normal' },
+  { value: 'thin',    label: 'Thin' },
+  { value: 'thick',   label: 'Thick' },
+  { value: 'arched',  label: 'Arched' },
+  { value: 'serious', label: 'Serious' },
+];
+const NOSE_STYLES: { value: NoseStyle; emoji: string; label: string }[] = [
+  { value: 'none',   emoji: '∅', label: 'None' },
+  { value: 'dot',    emoji: '•', label: 'Dot' },
+  { value: 'button', emoji: '⊙', label: 'Button' },
+];
+const BODY_TYPES:  { value: BodyType; label: string }[] = [
+  { value: 'slim',    label: 'Slim' },
+  { value: 'average', label: 'Average' },
+  { value: 'curvy',   label: 'Curvy' },
+];
+const BACKGROUNDS: { value: BackgroundStyle; emoji: string; label: string }[] = [
+  { value: 'none',        emoji: '✕', label: 'None' },
+  { value: 'gradient',    emoji: '🌅', label: 'Gradient' },
+  { value: 'stars',       emoji: '⭐', label: 'Stars' },
+  { value: 'sakura',      emoji: '🌸', label: 'Sakura' },
+  { value: 'holographic', emoji: '💿', label: 'Holo' },
+  { value: 'rain',        emoji: '🌧', label: 'Rain' },
 ];
 const ACCESSORIES: { value: Accessory; emoji: string; label: string }[] = [
-  { value: 'cat_ears', emoji: '🐱', label: 'Cat Ears' },
+  { value: 'cat_ears',   emoji: '🐱', label: 'Cat Ears' },
   { value: 'bunny_ears', emoji: '🐰', label: 'Bunny Ears' },
-  { value: 'horns', emoji: '😈', label: 'Horns' },
-  { value: 'glasses', emoji: '👓', label: 'Glasses' },
-  { value: 'bow', emoji: '🎀', label: 'Bow' },
+  { value: 'horns',      emoji: '😈', label: 'Horns' },
+  { value: 'glasses',    emoji: '👓', label: 'Glasses' },
+  { value: 'bow',        emoji: '🎀', label: 'Bow' },
 ];
 const BONUS_ACCS: { value: BonusAccessory; emoji: string; label: string }[] = [
-  { value: 'wings', emoji: '🦋', label: 'Wings' },
-  { value: 'tail', emoji: '🦊', label: 'Tail' },
-  { value: 'flower_crown', emoji: '🌸', label: 'Flowers' },
-  { value: 'headphones', emoji: '🎧', label: 'Headphones' },
+  { value: 'wings',       emoji: '🦋', label: 'Wings' },
+  { value: 'tail',        emoji: '🦊', label: 'Tail' },
+  { value: 'flower_crown',emoji: '🌸', label: 'Flowers' },
+  { value: 'headphones',  emoji: '🎧', label: 'Headphones' },
 ];
 const SKIN_MARKINGS: { value: SkinMarking; emoji: string; label: string }[] = [
-  { value: 'freckles', emoji: '✦', label: 'Freckles' },
+  { value: 'freckles',    emoji: '✦', label: 'Freckles' },
   { value: 'beauty_mark', emoji: '•', label: 'Beauty Mark' },
   { value: 'blush_lines', emoji: '=', label: 'Blush Lines' },
 ];
 const OUTFIT_STYLES = [
-  { value: 'idol', label: 'Idol' }, { value: 'school', label: 'School' },
-  { value: 'fantasy', label: 'Fantasy' }, { value: 'casual', label: 'Casual' },
+  { value: 'idol',    label: 'Idol' },
+  { value: 'school',  label: 'School' },
+  { value: 'fantasy', label: 'Fantasy' },
+  { value: 'casual',  label: 'Casual' },
 ] as const;
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
+    <button onClick={onClick}
       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-        active
-          ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-          : 'bg-white/5 text-gray-300 hover:bg-white/10'
-      }`}
-    >
+        active ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'bg-white/5 text-gray-300 hover:bg-white/10'
+      }`}>
       {children}
     </button>
   );
@@ -61,20 +99,18 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 
 function ToggleChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
+    <button onClick={onClick}
       className={`px-3 py-1.5 rounded-lg text-sm transition-all flex items-center gap-1 ${
-        active
-          ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/30'
-          : 'bg-white/5 text-gray-300 hover:bg-white/10'
-      }`}
-    >
+        active ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/30' : 'bg-white/5 text-gray-300 hover:bg-white/10'
+      }`}>
       {children}
     </button>
   );
 }
 
-function ColorRow({ label, value, onChange, presets }: { label: string; value: string; onChange: (v: string) => void; presets?: string[] }) {
+function ColorRow({ label, value, onChange, presets }: {
+  label: string; value: string; onChange: (v: string) => void; presets?: string[];
+}) {
   return (
     <div className="flex items-center gap-3 py-1">
       <span className="text-gray-400 text-sm w-28 shrink-0">{label}</span>
@@ -89,6 +125,20 @@ function ColorRow({ label, value, onChange, presets }: { label: string; value: s
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function SliderRow({ label, value, min, max, step = 0.05, onChange }: {
+  label: string; value: number; min: number; max: number; step?: number; onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-1">
+      <span className="text-gray-400 text-sm w-28 shrink-0">{label}</span>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(parseFloat(e.target.value))}
+        className="flex-1 accent-purple-500" />
+      <span className="text-gray-500 text-xs w-8 text-right">{value.toFixed(2)}</span>
     </div>
   );
 }
@@ -129,14 +179,15 @@ export function AvatarCreator({ config, onChange }: Props) {
         <div className="rounded-2xl overflow-hidden shadow-2xl shadow-purple-900/40 ring-1 ring-white/10">
           <Avatar3DCanvas config={config} liveState={PREVIEW_STATE} width={300} height={375} />
         </div>
-        <p className="text-gray-500 text-xs">Preview (happy expression)</p>
+        <p className="text-gray-500 text-xs">Preview (happy)</p>
       </div>
 
       {/* Controls */}
-      <div className="flex-1 overflow-y-auto pr-1 max-h-[600px] custom-scroll">
+      <div className="flex-1 overflow-y-auto pr-1 max-h-[600px] custom-scroll space-y-0">
+
         <Section title="Skin">
           <ColorRow label="Skin Color" value={config.skinColor} onChange={v => set('skinColor', v)}
-            presets={['#fde8d0', '#f5c99f', '#e8a87c', '#c68642', '#8d5524']} />
+            presets={['#fde8d0', '#f5c99f', '#e8a87c', '#c68642', '#8d5524', '#4a2912']} />
           <div className="pt-1">
             <p className="text-gray-400 text-xs mb-1.5">Markings</p>
             <div className="flex gap-2 flex-wrap">
@@ -151,12 +202,16 @@ export function AvatarCreator({ config, onChange }: Props) {
 
         <Section title="Hair">
           <div className="flex gap-2 flex-wrap mb-2">
-            {HAIR_STYLES.map(s => <Chip key={s.value} active={config.hairStyle === s.value} onClick={() => set('hairStyle', s.value)}>{s.label}</Chip>)}
+            {HAIR_STYLES.map(s => (
+              <Chip key={s.value} active={config.hairStyle === s.value} onClick={() => set('hairStyle', s.value)}>
+                {s.label}
+              </Chip>
+            ))}
           </div>
           <ColorRow label="Hair Color" value={config.hairColor} onChange={v => set('hairColor', v)}
-            presets={['#7c3aed', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#111827', '#f3f4f6', '#1e40af']} />
+            presets={['#7c3aed', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#111827', '#f3f4f6', '#1e40af', '#f97316']} />
           <ColorRow label="Highlights" value={config.hairHighlightColor} onChange={v => set('hairHighlightColor', v)}
-            presets={['#a78bfa', '#f9a8d4', '#fcd34d', '#6ee7b7', '#93c5fd']} />
+            presets={['#a78bfa', '#f9a8d4', '#fcd34d', '#6ee7b7', '#93c5fd', '#ffffff']} />
         </Section>
 
         <Section title="Eyes">
@@ -167,25 +222,72 @@ export function AvatarCreator({ config, onChange }: Props) {
             {EYE_DECOS.map(d => <Chip key={d.value} active={config.eyeDecoration === d.value} onClick={() => set('eyeDecoration', d.value)}>{d.label}</Chip>)}
           </div>
           <ColorRow label="Eye Color" value={config.eyeColor} onChange={v => set('eyeColor', v)}
-            presets={['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']} />
-          <ColorRow label="Eyebrow" value={config.eyebrowColor} onChange={v => set('eyebrowColor', v)} />
+            presets={['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#f97316']} />
+          <SliderRow label="Eye Size" value={config.eyeSize ?? 1.0} min={0.6} max={1.5} onChange={v => set('eyeSize', v)} />
+          <SliderRow label="Eye Spacing" value={config.eyeSpacing ?? 1.0} min={0.7} max={1.3} onChange={v => set('eyeSpacing', v)} />
         </Section>
 
-        <Section title="Outfit">
+        <Section title="Eyebrows">
+          <div className="flex gap-2 flex-wrap mb-2">
+            {BROW_STYLES.map(s => (
+              <Chip key={s.value} active={(config.eyebrowStyle ?? 'normal') === s.value} onClick={() => set('eyebrowStyle', s.value)}>
+                {s.label}
+              </Chip>
+            ))}
+          </div>
+          <ColorRow label="Eyebrow Color" value={config.eyebrowColor} onChange={v => set('eyebrowColor', v)}
+            presets={['#5b21b6', '#111827', '#7c3aed', '#92400e', '#374151', '#1e40af']} />
+        </Section>
+
+        <Section title="Nose &amp; Mouth">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-gray-400 text-sm w-28 shrink-0">Nose Style</span>
+            <div className="flex gap-2 flex-wrap">
+              {NOSE_STYLES.map(n => (
+                <Chip key={n.value} active={(config.noseStyle ?? 'dot') === n.value} onClick={() => set('noseStyle', n.value)}>
+                  {n.emoji} {n.label}
+                </Chip>
+              ))}
+            </div>
+          </div>
+          <ColorRow label="Lips" value={config.lipColor} onChange={v => set('lipColor', v)}
+            presets={['#f472b6', '#fb7185', '#e879f9', '#c084fc', '#f97316', '#ef4444']} />
+          <SliderRow label="Mouth Size" value={config.mouthSize ?? 1.0} min={0.6} max={1.5} onChange={v => set('mouthSize', v)} />
+        </Section>
+
+        <Section title="Blush">
+          <ColorRow label="Blush Color" value={config.blushColor} onChange={v => set('blushColor', v)}
+            presets={['#f9a8d4', '#fca5a5', '#fdba74', '#f0abfc', '#a5f3fc']} />
+        </Section>
+
+        <Section title="Outfit &amp; Body">
           <div className="flex gap-2 flex-wrap mb-2">
             {OUTFIT_STYLES.map(s => <Chip key={s.value} active={config.outfitStyle === s.value} onClick={() => set('outfitStyle', s.value)}>{s.label}</Chip>)}
           </div>
           <ColorRow label="Outfit" value={config.outfitColor} onChange={v => set('outfitColor', v)}
-            presets={['#1e1b4b', '#831843', '#14532d', '#1c1917', '#0c4a6e', '#7f1d1d']} />
+            presets={['#1e1b4b', '#831843', '#14532d', '#1c1917', '#0c4a6e', '#7f1d1d', '#3b0764']} />
           <ColorRow label="Accent" value={config.accentColor} onChange={v => set('accentColor', v)}
-            presets={['#ec4899', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4']} />
+            presets={['#ec4899', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#f97316']} />
+          <div className="pt-1">
+            <p className="text-gray-400 text-xs mb-1.5">Body Type</p>
+            <div className="flex gap-2">
+              {BODY_TYPES.map(b => (
+                <Chip key={b.value} active={(config.bodyType ?? 'average') === b.value} onClick={() => set('bodyType', b.value)}>
+                  {b.label}
+                </Chip>
+              ))}
+            </div>
+          </div>
         </Section>
 
-        <Section title="Details">
-          <ColorRow label="Lips" value={config.lipColor} onChange={v => set('lipColor', v)}
-            presets={['#f472b6', '#fb7185', '#e879f9', '#c084fc']} />
-          <ColorRow label="Blush" value={config.blushColor} onChange={v => set('blushColor', v)}
-            presets={['#f9a8d4', '#fca5a5', '#fdba74', '#f0abfc']} />
+        <Section title="Background">
+          <div className="flex gap-2 flex-wrap">
+            {BACKGROUNDS.map(b => (
+              <Chip key={b.value} active={(config.background ?? 'none') === b.value} onClick={() => set('background', b.value)}>
+                {b.emoji} {b.label}
+              </Chip>
+            ))}
+          </div>
         </Section>
 
         <Section title="Accessories">
@@ -206,6 +308,7 @@ export function AvatarCreator({ config, onChange }: Props) {
             ))}
           </div>
         </Section>
+
       </div>
     </div>
   );
