@@ -2,6 +2,15 @@ import * as THREE from 'three';
 import type { AvatarConfig, AvatarLiveState, Expression } from '../types/avatar';
 import { lighten, darken, alpha } from './colorUtils';
 
+const HAND_CONNECTIONS: [number, number][] = [
+  [0,1],[1,2],[2,3],[3,4],
+  [0,5],[5,6],[6,7],[7,8],
+  [5,9],[9,10],[10,11],[11,12],
+  [9,13],[13,14],[14,15],[15,16],
+  [13,17],[17,18],[18,19],[19,20],
+  [0,17],[0,9],
+];
+
 // ── helpers ────────────────────────────────────────────────────────────────
 
 function lerp(a: number, b: number, t: number) { return a + (b - a) * Math.max(0, Math.min(1, t)); }
@@ -23,10 +32,10 @@ function disposeMesh(obj: THREE.Object3D) {
 
 // ── face canvas drawing ────────────────────────────────────────────────────
 
-const CANVAS_SIZE = 512;
-const CX = 256;
-const CY = 276;
-const R  = 215;
+const CANVAS_SIZE = 1024;
+const CX = 512;
+const CY = 552;
+const R  = 430;
 
 function drawFaceCanvas(ctx: CanvasRenderingContext2D, config: AvatarConfig, state: AvatarLiveState) {
   ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
@@ -350,38 +359,63 @@ function drawMouth3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, state:
 
 // ── 3D mesh builders ───────────────────────────────────────────────────────
 
-function toonMat(color: string | THREE.Color, opts: Partial<THREE.MeshToonMaterialParameters> = {}): THREE.MeshToonMaterial {
-  return new THREE.MeshToonMaterial({ color: color as THREE.ColorRepresentation, ...opts });
-}
-
-function outlineMesh(geo: THREE.BufferGeometry, color: string, scaleFactor: number): THREE.Mesh {
-  const mat = new THREE.MeshBasicMaterial({ color: 0x111122, side: THREE.BackSide });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.scale.setScalar(scaleFactor);
-  void color;
-  return mesh;
-}
 
 function buildHead(config: AvatarConfig): THREE.Group {
   const group = new THREE.Group();
-  const geo = new THREE.SphereGeometry(1, 48, 48);
-  const mat = toonMat(config.skinColor);
-  const head = new THREE.Mesh(geo, mat);
-  head.scale.set(1.1, 1.05, 0.9);
+
+  // Anime head profile: chin (bottom) to crown (top)
+  const profile = [
+    new THREE.Vector2(0.01, -1.12),   // chin tip
+    new THREE.Vector2(0.25, -0.95),   // chin
+    new THREE.Vector2(0.55, -0.55),   // jaw
+    new THREE.Vector2(0.80,  0.02),   // cheek
+    new THREE.Vector2(0.96,  0.52),   // widest
+    new THREE.Vector2(1.02,  0.92),   // temple
+    new THREE.Vector2(0.94,  1.28),   // cranium
+    new THREE.Vector2(0.62,  1.52),   // near top
+    new THREE.Vector2(0.01,  1.58),   // crown
+  ];
+  const headGeo = new THREE.LatheGeometry(profile, 64);
+
+  const skinHex = config.skinColor;
+  const headMat = new THREE.MeshPhongMaterial({
+    color: new THREE.Color(skinHex),
+    shininess: 22,
+    specular: new THREE.Color(0.12, 0.08, 0.08),
+  });
+  const head = new THREE.Mesh(headGeo, headMat);
+  head.castShadow = true;
+  head.receiveShadow = true;
   group.add(head);
 
-  // Outline
-  const outline = outlineMesh(geo, config.skinColor, 1.04);
-  outline.scale.set(1.1 * 1.04, 1.05 * 1.04, 0.9 * 1.04);
+  // Anime outline (BackSide trick)
+  const outlineMat = new THREE.MeshBasicMaterial({ color: 0x110820, side: THREE.BackSide });
+  const outline = new THREE.Mesh(headGeo, outlineMat);
+  outline.scale.setScalar(1.035);
   group.add(outline);
 
-  // Ears
-  const earGeo = new THREE.SphereGeometry(0.18, 16, 16);
+  // Ears (small spheres at sides)
+  const earGeo = new THREE.SphereGeometry(0.16, 16, 16);
   for (const side of [-1, 1]) {
-    const earMat = toonMat(config.skinColor);
+    const earMat = new THREE.MeshPhongMaterial({
+      color: new THREE.Color(skinHex),
+      shininess: 18,
+      specular: new THREE.Color(0.1, 0.06, 0.06),
+    });
     const ear = new THREE.Mesh(earGeo, earMat);
-    ear.position.set(side * 1.1 * 0.98, 0, 0);
+    ear.position.set(side * 0.96, 0.0, 0.06);
+    ear.castShadow = true;
     group.add(ear);
+
+    // Inner ear detail
+    const innerGeo = new THREE.SphereGeometry(0.09, 12, 12);
+    const innerMat = new THREE.MeshPhongMaterial({
+      color: new THREE.Color(config.blushColor || '#f9a8d4'),
+      shininess: 10,
+    });
+    const inner = new THREE.Mesh(innerGeo, innerMat);
+    inner.position.set(side * 1.02, 0.0, 0.1);
+    group.add(inner);
   }
 
   return group;
@@ -393,7 +427,11 @@ function buildHair(config: AvatarConfig): THREE.Group {
   const style = config.hairStyle;
 
   const addMesh = (geo: THREE.BufferGeometry, pos: [number, number, number], rot?: [number, number, number], scale?: [number, number, number]) => {
-    const mat = new THREE.MeshToonMaterial({ color: hc });
+    const mat = new THREE.MeshPhongMaterial({
+      color: hc,
+      shininess: 90,
+      specular: new THREE.Color(config.hairHighlightColor || '#a78bfa').multiplyScalar(0.4),
+    });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(...pos);
     if (rot) mesh.rotation.set(...rot);
@@ -442,7 +480,7 @@ function buildHair(config: AvatarConfig): THREE.Group {
       addMesh(tailGeo, [side * 1.1, -0.5, 0.1], [0.1, 0, side * 0.55]);
       // Scrunchie torus
       const torusGeo = new THREE.TorusGeometry(0.22, 0.07, 8, 20);
-      const torusMat = new THREE.MeshToonMaterial({ color: new THREE.Color(config.accentColor) });
+      const torusMat = new THREE.MeshPhongMaterial({ color: new THREE.Color(config.accentColor), shininess: 60 });
       const torus = new THREE.Mesh(torusGeo, torusMat);
       torus.position.set(side * 1.0, -0.08, 0.1);
       torus.rotation.set(0, 0, side * 0.55);
@@ -456,7 +494,7 @@ function buildHair(config: AvatarConfig): THREE.Group {
     const ptGeo = new THREE.CylinderGeometry(0.2, 0.1, 2.5, 10);
     addMesh(ptGeo, [0, -0.2, -0.6], [-0.55, 0, 0]);
     // Hair tie torus
-    const tieMat = new THREE.MeshToonMaterial({ color: new THREE.Color(config.accentColor) });
+    const tieMat = new THREE.MeshPhongMaterial({ color: new THREE.Color(config.accentColor), shininess: 60 });
     const tieGeo = new THREE.TorusGeometry(0.22, 0.06, 8, 20);
     const tie = new THREE.Mesh(tieGeo, tieMat);
     tie.position.set(0, 0.52, -0.4); tie.rotation.set(-0.55, 0, 0);
@@ -726,6 +764,10 @@ export class Avatar3DRenderer {
 
   private configSig = '';
 
+  private handGroups: THREE.Group[] = [];
+  private handJoints: THREE.Mesh[][] = [];
+  private handBones: THREE.Mesh[][] = [];
+
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -737,17 +779,31 @@ export class Avatar3DRenderer {
     this.camera.position.set(0, 0.4, 8);
     this.camera.lookAt(0, 0.4, 0);
 
-    // Lighting — warm anime style
-    const ambient = new THREE.AmbientLight(0xfff5e8, 1.2);
+    // Lighting — warm anime with rim depth
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const ambient = new THREE.AmbientLight(0xfff0e8, 0.55);
     this.scene.add(ambient);
 
-    const key = new THREE.DirectionalLight(0xffeedd, 1.6);
-    key.position.set(2, 4, 5);
+    const key = new THREE.DirectionalLight(0xfff3d0, 2.2);
+    key.position.set(2.5, 5, 6);
+    key.castShadow = true;
+    key.shadow.mapSize.width  = 1024;
+    key.shadow.mapSize.height = 1024;
+    key.shadow.camera.near = 0.5;
+    key.shadow.camera.far  = 25;
+    key.shadow.bias = -0.002;
     this.scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0xdde8ff, 0.7);
-    fill.position.set(-3, 1, 2);
+    const fill = new THREE.DirectionalLight(0xd8e8ff, 0.7);
+    fill.position.set(-4, 2, 3);
     this.scene.add(fill);
+
+    const rim = new THREE.DirectionalLight(0xff88cc, 0.55);
+    rim.position.set(-0.5, -2, -5);
+    this.scene.add(rim);
 
     // Face canvas texture
     this.faceCanvas = document.createElement('canvas');
@@ -768,10 +824,10 @@ export class Avatar3DRenderer {
     this.headGroup.add(headMeshes);
 
     // Face plane (inside headGroup)
-    const facePlaneGeo = new THREE.PlaneGeometry(1.9, 1.9);
+    const facePlaneGeo = new THREE.PlaneGeometry(2.0, 2.0);
     const facePlaneMat = new THREE.MeshBasicMaterial({ map: this.faceTex, transparent: true, depthWrite: false });
     const facePlane = new THREE.Mesh(facePlaneGeo, facePlaneMat);
-    facePlane.position.set(0, 0, 0.92);
+    facePlane.position.set(0, 0.2, 0.94);
     this.headGroup.add(facePlane);
 
     this.hairGroup = new THREE.Group();
@@ -785,9 +841,11 @@ export class Avatar3DRenderer {
 
     this.bodyGroup = new THREE.Group();
     this.rootGroup.add(this.bodyGroup);
+
+    this.initHands('#fde8d0');
   }
 
-  render(config: AvatarConfig, state: AvatarLiveState): void {
+  render(config: AvatarConfig, state: AvatarLiveState, handLandmarks?: Array<{ x: number; y: number; z: number }[]> | null): void {
     // Rebuild structural meshes only when config changes
     const sig = JSON.stringify({
       skinColor: config.skinColor, hairColor: config.hairColor, hairHighlightColor: config.hairHighlightColor,
@@ -821,6 +879,8 @@ export class Avatar3DRenderer {
     drawFaceCanvas(this.faceCtx, config, state);
     this.faceTex.needsUpdate = true;
 
+    this.updateHands(handLandmarks ?? null);
+
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -837,10 +897,10 @@ export class Avatar3DRenderer {
     this.headGroup.add(headMeshGroup);
 
     // Face plane
-    const facePlaneGeo = new THREE.PlaneGeometry(1.9, 1.9);
+    const facePlaneGeo = new THREE.PlaneGeometry(2.0, 2.0);
     const facePlaneMat = new THREE.MeshBasicMaterial({ map: this.faceTex, transparent: true, depthWrite: false });
     const facePlane = new THREE.Mesh(facePlaneGeo, facePlaneMat);
-    facePlane.position.set(0, 0, 0.92);
+    facePlane.position.set(0, 0.2, 0.94);
     this.headGroup.add(facePlane);
 
     // Hair
@@ -864,6 +924,133 @@ export class Avatar3DRenderer {
     const newBody = buildBody(config);
     newBody.children.forEach(c => this.bodyGroup.add(c));
     this.bodyGroup.position.set(0, -1.05, 0);
+
+    this.initHands(config.skinColor);
+  }
+
+  private initHands(skinColor: string) {
+    // Remove old hand groups from scene
+    this.handGroups.forEach(g => {
+      disposeMesh(g);
+      this.scene.remove(g);
+    });
+    this.handGroups = [];
+    this.handJoints = [];
+    this.handBones  = [];
+
+    for (let h = 0; h < 2; h++) {
+      const group = new THREE.Group();
+      group.visible = false;
+      this.scene.add(group);
+      this.handGroups.push(group);
+
+      const skinMat = new THREE.MeshPhongMaterial({
+        color: new THREE.Color(skinColor),
+        shininess: 18,
+        specular: new THREE.Color(0.1, 0.06, 0.05),
+      });
+      const nailMat = new THREE.MeshPhongMaterial({
+        color: new THREE.Color(skinColor).multiplyScalar(1.15),
+        shininess: 50,
+      });
+      const outlineMat = new THREE.MeshBasicMaterial({
+        color: 0x110820,
+        side: THREE.BackSide,
+      });
+
+      // 21 joints (spheres)
+      const joints: THREE.Mesh[] = [];
+      for (let j = 0; j < 21; j++) {
+        // Fingertips are slightly larger
+        const r = (j === 4 || j === 8 || j === 12 || j === 16 || j === 20) ? 0.028 : 0.022;
+        const geo = new THREE.SphereGeometry(r, 8, 8);
+        const mesh = new THREE.Mesh(geo, j === 0 ? skinMat.clone() : skinMat);
+        mesh.castShadow = true;
+        group.add(mesh);
+        joints.push(mesh);
+
+        // Fingernail at fingertips
+        if (j === 4 || j === 8 || j === 12 || j === 16 || j === 20) {
+          const nailGeo = new THREE.BoxGeometry(0.028, 0.014, 0.022);
+          const nail = new THREE.Mesh(nailGeo, nailMat);
+          nail.position.set(0, 0, r * 0.6);
+          mesh.add(nail);
+        }
+      }
+      this.handJoints.push(joints);
+
+      // 22 bones (cylinders)
+      const bones: THREE.Mesh[] = [];
+      for (let b = 0; b < HAND_CONNECTIONS.length; b++) {
+        const geo = new THREE.CylinderGeometry(0.013, 0.016, 1, 6);
+        const mesh = new THREE.Mesh(geo, skinMat);
+        mesh.castShadow = true;
+        group.add(mesh);
+
+        // Bone outline
+        const olGeo = new THREE.CylinderGeometry(0.016, 0.019, 1, 6);
+        const ol = new THREE.Mesh(olGeo, outlineMat);
+        mesh.add(ol);
+
+        bones.push(mesh);
+      }
+      this.handBones.push(bones);
+    }
+  }
+
+  private updateHands(
+    landmarks: Array<{ x: number; y: number; z: number }[]> | null,
+  ) {
+    this.handGroups.forEach(g => { g.visible = false; });
+    if (!landmarks?.length) return;
+
+    // Map screen-space landmarks (0-1) to 3D world space
+    const camZ  = this.camera.position.z;  // ~8
+    const handZ = 1.8;  // place hands in front of avatar
+    const fovRad = this.camera.fov * (Math.PI / 180);
+    const dist = camZ - handZ;
+    const viewH = 2 * dist * Math.tan(fovRad / 2);
+    const viewW = viewH * this.camera.aspect;
+    // camera lookAt y offset
+    void camZ; // used via dist calculation above
+
+    const toWorld = (pt: { x: number; y: number; z: number }): THREE.Vector3 =>
+      new THREE.Vector3(
+        (0.5 - pt.x) * viewW,
+        0.4 + (0.5 - pt.y) * viewH,
+        handZ + pt.z * 1.5,
+      );
+
+    landmarks.forEach((hand, hi) => {
+      if (hi >= this.handGroups.length) return;
+      const group = this.handGroups[hi];
+      group.visible = true;
+
+      const pts = hand.map(toWorld);
+
+      // Update joint spheres
+      pts.forEach((p, j) => {
+        if (j < this.handJoints[hi].length) {
+          this.handJoints[hi][j].position.copy(p);
+        }
+      });
+
+      // Update bones
+      HAND_CONNECTIONS.forEach(([a, b], i) => {
+        if (i >= this.handBones[hi].length) return;
+        if (a >= pts.length || b >= pts.length) return;
+        const bone = this.handBones[hi][i];
+        const from = pts[a];
+        const to   = pts[b];
+        const len  = from.distanceTo(to);
+        if (len < 0.001) { bone.visible = false; return; }
+        bone.visible = true;
+        bone.position.copy(from).lerp(to, 0.5);
+        bone.scale.y = len;
+        bone.lookAt(to);
+        bone.rotateX(Math.PI / 2);
+      });
+    });
   }
 
   dispose(): void {

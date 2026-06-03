@@ -198,7 +198,7 @@ export function useWebcamTracking() {
             }
           }
 
-          const tongueOut = get('tongueOut');
+          const tongueOut = Math.min(1, get('tongueOut') * 6);
 
           const raw: Omit<FaceTrackingData, 'handLandmarks'> = {
             blinkLeft:  get('eyeBlinkLeft'),
@@ -218,7 +218,9 @@ export function useWebcamTracking() {
           const s = smoothRef.current;
           const α = 0.35;
           for (const k of Object.keys(raw) as (keyof typeof raw)[]) {
-            s[k] = s[k] * (1 - α) + raw[k] * α;
+            // Use faster smoothing for tongue so it responds immediately
+            const a = k === 'tongueOut' ? 0.6 : α;
+            s[k] = s[k] * (1 - a) + raw[k] * a;
           }
           setData({ ...s, handLandmarks });
         }
