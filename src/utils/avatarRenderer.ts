@@ -398,7 +398,10 @@ export class AvatarRenderer {
 
   private drawBlush(config: AvatarConfig, state: AvatarLiveState, cx: number, cy: number, r: number) {
     const ctx = this.ctx;
-    const intensity = exprVal(state, e => (e === 'blushing' ? 0.55 : e === 'happy' || e === 'wink' ? 0.3 : 0));
+    const intensity = exprVal(state, e => (
+      e === 'blushing' ? 0.55 : e === 'love' ? 0.5 : e === 'cry' ? 0.22 :
+      e === 'happy' || e === 'wink' || e === 'laugh' ? 0.3 : 0
+    ));
     if (intensity < 0.01) return;
     for (const side of [-1, 1]) {
       const bx = cx + side * r * 0.52;
@@ -420,16 +423,23 @@ export class AvatarRenderer {
     const browW = r * 0.38;
 
     const liftInner = exprVal(state, e => {
-      if (e === 'surprised') return r * 0.07;
-      if (e === 'sad') return r * 0.04;
+      if (e === 'surprised' || e === 'love' || e === 'laugh') return r * 0.07;
+      if (e === 'sad' || e === 'cry') return r * 0.06;
       return 0;
     });
     const liftOuter = exprVal(state, e => {
-      if (e === 'angry') return r * 0.07;
-      if (e === 'sad') return -r * 0.02;
+      if (e === 'angry') return r * 0.08;
+      if (e === 'sad' || e === 'cry') return -r * 0.04;
+      if (e === 'sleepy') return -r * 0.03;
       return 0;
     });
-    const raise = exprVal(state, e => e === 'surprised' ? r * 0.05 : 0);
+    const raise = exprVal(state, e => {
+      if (e === 'surprised' || e === 'love') return r * 0.05;
+      if (e === 'laugh') return r * 0.04;
+      if (e === 'sleepy') return -r * 0.02;
+      return 0;
+    });
+    const smugBlend = exprVal(state, e => e === 'smug' ? 1 : 0);
 
     ctx.strokeStyle = config.eyebrowColor;
     ctx.lineWidth = r * 0.055;
@@ -439,9 +449,11 @@ export class AvatarRenderer {
       const bx = cx + side * r * 0.38;
       const leftLift  = side === -1 ? liftInner : liftOuter;
       const rightLift = side === -1 ? liftOuter : liftInner;
+      // Smug: raise avatar's left brow (right side of screen = side=1)
+      const smugBoost = side === 1 ? smugBlend * r * 0.05 : 0;
       ctx.beginPath();
-      ctx.moveTo(bx - side * browW / 2, browY - raise + leftLift);
-      ctx.quadraticCurveTo(bx, browY - r * 0.04 - raise, bx + side * browW / 2, browY - raise + rightLift);
+      ctx.moveTo(bx - side * browW / 2, browY - raise - smugBoost + leftLift);
+      ctx.quadraticCurveTo(bx, browY - r * 0.04 - raise - smugBoost, bx + side * browW / 2, browY - raise - smugBoost + rightLift);
       ctx.stroke();
     }
   }
@@ -450,13 +462,18 @@ export class AvatarRenderer {
     const eyeY = cy - r * 0.12;
     const eyeSpacing = r * 0.4;
     const eyeW = r * 0.42;
-    const eyeH = config.eyeStyle === 'sleepy' ? r * 0.26 : r * 0.34;
+    const baseH = config.eyeStyle === 'sleepy' ? r * 0.26 : r * 0.34;
+    // Expression-driven eye height changes
+    const sleepyDroop  = exprVal(state, e => e === 'sleepy' ? 0.6  : 0);
+    const laughSquint  = exprVal(state, e => e === 'laugh'  ? 0.72 : 0);
+    const happySquint  = exprVal(state, e => e === 'happy'  ? 0.15 : e === 'blushing' ? 0.1 : 0);
+    const extraBlink   = Math.max(sleepyDroop, laughSquint, happySquint);
 
     for (const side of [-1, 1]) {
       const ex = cx + side * eyeSpacing;
-      const blink = side === -1 ? state.blinkLeft : state.blinkRight;
+      const blink = Math.max(side === -1 ? state.blinkLeft : state.blinkRight, extraBlink);
       const isWink = state.expression === 'wink' && side === -1 && state.expressionBlend > 0.5;
-      this.drawSingleEye(config, state, ex, eyeY, eyeW, eyeH, blink, isWink, side);
+      this.drawSingleEye(config, state, ex, eyeY, eyeW, baseH, blink, isWink, side);
     }
   }
 
@@ -557,7 +574,6 @@ export class AvatarRenderer {
     ctx.fill();
 
     if (config.eyeDecoration === 'sparkle') {
-      // Extra tiny sparkles
       for (let i = 0; i < 3; i++) {
         const sa = (i * 2 * Math.PI) / 3 + Math.PI / 6;
         ctx.beginPath();
@@ -567,7 +583,33 @@ export class AvatarRenderer {
       }
     }
 
+    // Love: tint iris pink/red
+    const loveTint = exprVal(state, e => e === 'love' ? 1 : 0);
+    if (loveTint > 0.1) {
+      ctx.beginPath();
+      ctx.arc(px, py, irisR, 0, Math.PI * 2);
+      ctx.fillStyle = alpha('#ff6b9d', loveTint * 0.45);
+      ctx.fill();
+    }
+
     ctx.restore();
+
+    // Cry: teardrop
+    const cryTear = exprVal(state, e => e === 'cry' ? 1 : 0);
+    if (cryTear > 0.1) {
+      const tearX  = ex - side * eyeW * 0.18;
+      const tearY0 = ey + actualH * 0.5;
+      const tearY1 = tearY0 + eyeW * 0.52;  // r * 0.22 ≈ eyeW * 0.52
+      const d = eyeW * 0.07;                // r * 0.03 ≈ eyeW * 0.07
+      const d2 = eyeW * 0.14;               // r * 0.06 ≈ eyeW * 0.14
+      const d3 = eyeW * 0.095;              // r * 0.04 ≈ eyeW * 0.095
+      ctx.fillStyle = alpha('#93c5fd', cryTear * 0.8);
+      ctx.beginPath();
+      ctx.moveTo(tearX, tearY0);
+      ctx.bezierCurveTo(tearX + d, tearY0 + d2, tearX + d3, tearY1 - d3, tearX, tearY1);
+      ctx.bezierCurveTo(tearX - d3, tearY1 - d3, tearX - d, tearY0 + d2, tearX, tearY0);
+      ctx.fill();
+    }
 
     // Eyelid line
     ctx.beginPath();
@@ -620,22 +662,26 @@ export class AvatarRenderer {
     const mW = r * 0.38;
 
     const curvature = exprVal(state, e => {
-      if (e === 'happy' || e === 'blushing') return 0.38;
-      if (e === 'sad') return -0.32;
+      if (e === 'happy' || e === 'blushing' || e === 'love') return 0.42;
+      if (e === 'laugh') return 0.45;
+      if (e === 'sad' || e === 'cry') return -0.36;
       if (e === 'angry') return -0.22;
-      if (e === 'wink') return 0.28;
+      if (e === 'wink' || e === 'smug') return 0.26;
       if (e === 'surprised') return 0.0;
+      if (e === 'sleepy') return 0.06;
       return 0.12;
     });
 
-    const isSurprised = exprVal(state, e => e === 'surprised' ? 1 : 0);
-
-    if (isSurprised > 0.5) {
-      this.drawSurprisedMouth(ctx, cx, my, mW, r, state.mouthOpen, state.viseme, config.lipColor);
+    const isWideOpen = exprVal(state, e => (e === 'surprised' || e === 'laugh') ? 1 : 0);
+    if (isWideOpen > 0.5) {
+      const isLaugh = exprVal(state, e => e === 'laugh' ? 1 : 0) > 0.5;
+      this.drawSurprisedMouth(ctx, cx, my, isLaugh ? mW * 1.4 : mW, r, state.mouthOpen, state.viseme, config.lipColor);
       return;
     }
 
-    this.drawVisemeMouth(ctx, cx, my, mW, r, state.mouthOpen, state.viseme, curvature, config.lipColor);
+    // Smug: offset mouth center slightly to avatar-left (viewer right = cx+)
+    const smugOff = exprVal(state, e => e === 'smug' ? r * 0.08 : 0);
+    this.drawVisemeMouth(ctx, cx + smugOff, my, mW, r, state.mouthOpen, state.viseme, curvature, config.lipColor);
   }
 
   private drawSurprisedMouth(

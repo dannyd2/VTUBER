@@ -8,7 +8,7 @@ interface Props {
   onChange: (config: AvatarConfig) => void;
 }
 
-const PREVIEW_STATE: AvatarLiveState = { ...DEFAULT_LIVE_STATE, expression: 'happy', expressionBlend: 1 };
+const PREVIEW_STATE: AvatarLiveState = { ...DEFAULT_LIVE_STATE, expression: 'happy', expressionBlend: 1, headRotX: 0, headRotY: 0, tongueOut: 0 };
 
 const HAIR_STYLES: { value: HairStyle; label: string }[] = [
   { value: 'long', label: 'Long' }, { value: 'short', label: 'Short' },

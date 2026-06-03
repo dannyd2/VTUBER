@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+import { FaceLandmarker, HandLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 
 export interface FaceTrackingData {
   blinkLeft: number;
@@ -11,6 +11,10 @@ export interface FaceTrackingData {
   smile: number;
   browRaise: number;
   browFurrow: number;
+  tongueOut: number;
+  headRotX: number;   // pitch
+  headRotY: number;   // yaw (headTilt already exists = roll)
+  handLandmarks: Array<{ x: number; y: number; z: number }[]> | null;
 }
 
 const WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
@@ -36,14 +40,16 @@ export function useWebcamTracking() {
   const [data,      setData]      = useState<FaceTrackingData | null>(null);
   const [videoEl,   setVideoEl]   = useState<HTMLVideoElement | null>(null);
 
-  const landmarkerRef = useRef<FaceLandmarker | null>(null);
-  const streamRef     = useRef<MediaStream | null>(null);
+  const landmarkerRef     = useRef<FaceLandmarker | null>(null);
+  const handLandmarkerRef = useRef<HandLandmarker | null>(null);
+  const streamRef         = useRef<MediaStream | null>(null);
   const videoRef      = useRef<HTMLVideoElement | null>(null);
   const rafRef        = useRef<number>(0);
   const lastTimeRef   = useRef(0);
-  const smoothRef     = useRef<FaceTrackingData>({
+  const smoothRef     = useRef<Omit<FaceTrackingData, 'handLandmarks'>>({
     blinkLeft: 0, blinkRight: 0, mouthOpen: 0, headTilt: 0,
     eyeGazeX: 0, eyeGazeY: 0, smile: 0, browRaise: 0, browFurrow: 0,
+    tongueOut: 0, headRotX: 0, headRotY: 0,
   });
 
   // Always clean up before a new attempt
@@ -52,6 +58,8 @@ export function useWebcamTracking() {
     streamRef.current?.getTracks().forEach(t => t.stop());
     void landmarkerRef.current?.close();
     landmarkerRef.current = null;
+    void handLandmarkerRef.current?.close();
+    handLandmarkerRef.current = null;
     if (videoRef.current) {
       videoRef.current.srcObject = null;
       videoRef.current = null;
@@ -130,6 +138,28 @@ export function useWebcamTracking() {
       return;
     }
     landmarkerRef.current = lm;
+
+    // ── Step 4: load HandLandmarker (optional — don't fail if it errors) ──
+    const HAND_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+    try {
+      const vision = await FilesetResolver.forVisionTasks(WASM_CDN);
+      try {
+        handLandmarkerRef.current = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'GPU' },
+          runningMode: 'VIDEO',
+          numHands: 2,
+        });
+      } catch {
+        handLandmarkerRef.current = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'CPU' },
+          runningMode: 'VIDEO',
+          numHands: 2,
+        });
+      }
+    } catch {
+      handLandmarkerRef.current = null;
+    }
+
     setIsActive(true);
     setIsLoading(false);
 
@@ -140,15 +170,19 @@ export function useWebcamTracking() {
       if (timestamp - lastTimeRef.current > 33) {
         lastTimeRef.current = timestamp;
         const result = landmarkerRef.current.detectForVideo(videoRef.current, timestamp);
+        const handResult = handLandmarkerRef.current?.detectForVideo(videoRef.current!, timestamp);
+        const handLandmarks = handResult?.landmarks ?? null;
 
         if (result.faceBlendshapes?.[0]?.categories) {
           const bs  = result.faceBlendshapes[0].categories;
           const get = (name: string) => bs.find(c => c.categoryName === name)?.score ?? 0;
 
-          let headTilt = 0;
+          let headTilt = 0, headRotX = 0, headRotY = 0;
           if (result.facialTransformationMatrixes?.[0]?.data) {
             const m = result.facialTransformationMatrixes[0].data;
-            headTilt = Math.atan2(m[1], m[0]) * 0.5;
+            headTilt = Math.atan2(m[1], m[0]) * 0.5;  // roll
+            headRotX = Math.atan2(-m[9], m[10]) * 0.6;  // pitch (nod up/down)
+            headRotY = Math.asin(Math.max(-1, Math.min(1, m[2]))) * -0.8;  // yaw (negate for mirror)
           }
 
           let eyeGazeX = 0, eyeGazeY = 0;
@@ -164,7 +198,9 @@ export function useWebcamTracking() {
             }
           }
 
-          const raw: FaceTrackingData = {
+          const tongueOut = get('tongueOut');
+
+          const raw: Omit<FaceTrackingData, 'handLandmarks'> = {
             blinkLeft:  get('eyeBlinkLeft'),
             blinkRight: get('eyeBlinkRight'),
             mouthOpen:  get('jawOpen'),
@@ -174,14 +210,17 @@ export function useWebcamTracking() {
             smile:      (get('mouthSmileLeft') + get('mouthSmileRight')) / 2,
             browRaise:  (get('browOuterUpLeft') + get('browOuterUpRight')) / 2,
             browFurrow: (get('browDownLeft') + get('browDownRight')) / 2,
+            tongueOut,
+            headRotX,
+            headRotY,
           };
 
           const s = smoothRef.current;
           const α = 0.35;
-          for (const k of Object.keys(raw) as (keyof FaceTrackingData)[]) {
+          for (const k of Object.keys(raw) as (keyof typeof raw)[]) {
             s[k] = s[k] * (1 - α) + raw[k] * α;
           }
-          setData({ ...s });
+          setData({ ...s, handLandmarks });
         }
       }
       rafRef.current = requestAnimationFrame(detect);

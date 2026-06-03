@@ -22,6 +22,11 @@ export const EXPRESSION_PARTICLES: Record<Expression, { type: ParticleType; colo
   sad:       { type: 'tear',      color: '#60a5fa', count: 6  },
   angry:     { type: 'lightning', color: '#f87171', count: 6  },
   wink:      { type: 'note',      color: '#34d399', count: 6  },
+  cry:       { type: 'tear',      color: '#93c5fd', count: 8  },
+  smug:      { type: 'note',      color: '#c084fc', count: 4  },
+  love:      { type: 'heart',     color: '#f43f5e', count: 12 },
+  sleepy:    { type: 'sparkle',   color: '#818cf8', count: 4  },
+  laugh:     { type: 'star',      color: '#fb923c', count: 10 },
 };
 
 export class ParticleSystem {

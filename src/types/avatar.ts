@@ -1,6 +1,6 @@
 export type HairStyle = 'long' | 'short' | 'twintails' | 'ponytail' | 'bob';
 export type EyeStyle = 'round' | 'almond' | 'sleepy';
-export type Expression = 'neutral' | 'happy' | 'sad' | 'surprised' | 'angry' | 'blushing' | 'wink';
+export type Expression = 'neutral' | 'happy' | 'sad' | 'surprised' | 'angry' | 'blushing' | 'wink' | 'cry' | 'smug' | 'love' | 'sleepy' | 'laugh';
 export type Accessory = 'cat_ears' | 'bunny_ears' | 'glasses' | 'bow' | 'horns';
 export type BonusAccessory = 'wings' | 'tail' | 'flower_crown' | 'headphones';
 export type SkinMarking = 'freckles' | 'beauty_mark' | 'blush_lines';
@@ -38,6 +38,9 @@ export interface AvatarLiveState {
   eyeGazeX: number;
   eyeGazeY: number;
   headTilt: number;
+  tongueOut: number;  // 0-1, how much tongue is visible
+  headRotX: number;   // pitch in radians (head nod up/down)
+  headRotY: number;   // yaw in radians (head turn left/right)
   breathPhase: number;
   isMicActive: boolean;
   isWebcamActive: boolean;
@@ -73,6 +76,9 @@ export const DEFAULT_LIVE_STATE: AvatarLiveState = {
   eyeGazeX: 0,
   eyeGazeY: 0,
   headTilt: 0,
+  tongueOut: 0,
+  headRotX: 0,
+  headRotY: 0,
   breathPhase: 0,
   isMicActive: false,
   isWebcamActive: false,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import type { AvatarLiveState, Viseme } from '../types/avatar';
+import type { AvatarLiveState, Expression, Viseme } from '../types/avatar';
 import type { FaceTrackingData } from './useWebcamTracking';
 
 interface AnimationOptions {
@@ -8,12 +8,21 @@ interface AnimationOptions {
   webcamData: FaceTrackingData | null;
   onStateUpdate: (state: AvatarLiveState) => void;
   getState: () => AvatarLiveState;
+  autoExpression?: boolean;
+}
+
+function detectExpression(cam: FaceTrackingData): Expression | null {
+  if (cam.smile > 0.55) return 'happy';
+  if (cam.browRaise > 0.65 && cam.mouthOpen > 0.3) return 'surprised';
+  if (cam.browFurrow > 0.6 && cam.smile < 0.1) return 'angry';
+  if (cam.smile > 0.35 && cam.blinkLeft < 0.3 && cam.smile < 0.55) return 'blushing';
+  return null;
 }
 
 const BLINK_TRANSITION = 0.08;
 const EXPRESSION_TRANSITION = 0.06;
 
-export function useAvatarAnimation({ micVolume, micViseme, webcamData, onStateUpdate, getState }: AnimationOptions) {
+export function useAvatarAnimation({ micVolume, micViseme, webcamData, onStateUpdate, getState, autoExpression = false }: AnimationOptions) {
   const rafRef = useRef<number>(0);
   const micVolumeRef  = useRef(micVolume);
   const micVisemeRef  = useRef(micViseme);
@@ -21,6 +30,9 @@ export function useAvatarAnimation({ micVolume, micViseme, webcamData, onStateUp
   micVolumeRef.current  = micVolume;
   micVisemeRef.current  = micViseme;
   webcamDataRef.current = webcamData;
+
+  const autoExpressionRef = useRef(autoExpression);
+  autoExpressionRef.current = autoExpression;
 
   const blinkRef = useRef({
     nextBlink: Date.now() + 2000 + Math.random() * 3000,
@@ -75,10 +87,31 @@ export function useAvatarAnimation({ micVolume, micViseme, webcamData, onStateUp
     const eyeGazeX    = cam ? cam.eyeGazeX   : state.eyeGazeX;
     const eyeGazeY    = cam ? cam.eyeGazeY   : state.eyeGazeY;
     const headTilt    = cam ? cam.headTilt    : state.headTilt;
+    const headRotX    = cam ? cam.headRotX    : (state.headRotX ?? 0);
+    const headRotY    = cam ? cam.headRotY    : (state.headRotY ?? 0);
+    const tongueOut   = cam ? cam.tongueOut   : 0;
+
+    // ── Auto-expression detection ─────────────────────────────────────────
+    let expression      = state.expression;
+    let prevExpression  = state.prevExpression;
+    let finalExprBlend  = expressionBlend;
+
+    if (autoExpressionRef.current && cam) {
+      const autoExpr = detectExpression(cam);
+      if (autoExpr && autoExpr !== state.expression) {
+        if (state.expressionBlend >= 0.9) {
+          prevExpression = state.expression;
+          expression     = autoExpr;
+          finalExprBlend = 0;
+        }
+      }
+    }
 
     onStateUpdate({
       ...state,
-      expressionBlend,
+      expression,
+      prevExpression,
+      expressionBlend: finalExprBlend,
       blinkLeft,
       blinkRight,
       breathPhase,
@@ -87,6 +120,9 @@ export function useAvatarAnimation({ micVolume, micViseme, webcamData, onStateUp
       eyeGazeX,
       eyeGazeY,
       headTilt,
+      headRotX,
+      headRotY,
+      tongueOut,
     });
 
     rafRef.current = requestAnimationFrame(tick);
