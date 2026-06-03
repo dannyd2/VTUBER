@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import type { AvatarConfig, AvatarLiveState, HairStyle, EyeStyle, Accessory, BonusAccessory, SkinMarking, EyeDecoration } from '../types/avatar';
 import { DEFAULT_LIVE_STATE } from '../types/avatar';
-import { AvatarCanvas } from './AvatarCanvas';
+import { Avatar3DCanvas } from './Avatar3DCanvas';
 
 interface Props {
   config: AvatarConfig;
@@ -127,7 +127,7 @@ export function AvatarCreator({ config, onChange }: Props) {
       {/* Preview */}
       <div className="flex flex-col items-center gap-4 shrink-0">
         <div className="rounded-2xl overflow-hidden shadow-2xl shadow-purple-900/40 ring-1 ring-white/10">
-          <AvatarCanvas config={config} liveState={PREVIEW_STATE} width={300} height={375} />
+          <Avatar3DCanvas config={config} liveState={PREVIEW_STATE} width={300} height={375} />
         </div>
         <p className="text-gray-500 text-xs">Preview (happy expression)</p>
       </div>

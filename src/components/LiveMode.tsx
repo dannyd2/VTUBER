@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AvatarConfig, AvatarLiveState, Expression } from '../types/avatar';
 import { DEFAULT_LIVE_STATE } from '../types/avatar';
-import { AvatarCanvas } from './AvatarCanvas';
 import { Avatar3DCanvas } from './Avatar3DCanvas';
 import { useMicrophoneInput } from '../hooks/useMicrophoneInput';
 import { useWebcamTracking } from '../hooks/useWebcamTracking';
 import { useAvatarAnimation } from '../hooks/useAvatarAnimation';
-import { ParticleSystem, EXPRESSION_PARTICLES } from '../utils/particleSystem';
 import { playExpressionSound, setSoundEnabled } from '../utils/soundEffects';
 
 interface Props { config: AvatarConfig }
@@ -28,7 +26,6 @@ const EXPRESSIONS: { value: Expression; label: string; emoji: string; key: strin
 
 export function LiveMode({ config }: Props) {
   const [liveState, setLiveState] = useState<AvatarLiveState>(DEFAULT_LIVE_STATE);
-  const [use3D, setUse3D] = useState(false);
   const [autoExpr, setAutoExpr] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
   const [showPiP, setShowPiP] = useState(true);
@@ -38,11 +35,9 @@ export function LiveMode({ config }: Props) {
 
   const mic    = useMicrophoneInput();
   const webcam = useWebcamTracking();
-  const particles = useRef(new ParticleSystem()).current;
 
   const pipVideoRef = useRef<HTMLVideoElement>(null);
 
-  // Keep PiP video in sync with webcam stream
   useEffect(() => {
     const el = pipVideoRef.current;
     if (!el) return;
@@ -53,7 +48,6 @@ export function LiveMode({ config }: Props) {
     }
   }, [webcam.videoEl]);
 
-  // Sync sound toggle
   useEffect(() => { setSoundEnabled(soundOn); }, [soundOn]);
 
   const getState = useCallback(() => stateRef.current, []);
@@ -78,14 +72,13 @@ export function LiveMode({ config }: Props) {
       stateRef.current = next;
       return next;
     });
-    const p = EXPRESSION_PARTICLES[expr];
-    if (p) particles.emit(200, 180, p.type, p.count, p.color);
     playExpressionSound(expr);
-  }, [particles]);
+  }, []);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Mouse gaze when webcam is off (3D canvas passes through mouse events via the canvas element)
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (webcam.isActive) return;
-    const rect = (e.target as HTMLCanvasElement).getBoundingClientRect();
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width  - 0.5) * 2;
     const y = ((e.clientY - rect.top)  / rect.height - 0.5) * 2;
     setLiveState(prev => ({ ...prev, eyeGazeX: x * 0.6, eyeGazeY: y * 0.4 }));
@@ -105,40 +98,24 @@ export function LiveMode({ config }: Props) {
     <div className="flex gap-6 flex-wrap">
       {/* Avatar canvas */}
       <div className="flex flex-col items-center gap-3">
-        <div className="rounded-2xl overflow-hidden shadow-2xl shadow-purple-900/50 ring-1 ring-white/10 relative">
-          {use3D ? (
-            <Avatar3DCanvas
-              config={config}
-              liveState={liveState}
-              width={400} height={500}
-              handLandmarks={webcam.isActive ? webcam.data?.handLandmarks : null}
-            />
-          ) : (
-            <AvatarCanvas
-              config={config} liveState={liveState}
-              width={400} height={500}
-              particles={particles}
-              onMouseMove={handleMouseMove}
-            />
-          )}
+        <div
+          className="rounded-2xl overflow-hidden shadow-2xl shadow-purple-900/50 ring-1 ring-white/10 relative"
+          onMouseMove={handleMouseMove}
+        >
+          <Avatar3DCanvas
+            config={config}
+            liveState={liveState}
+            width={400} height={500}
+            handLandmarks={webcam.isActive ? webcam.data?.handLandmarks : null}
+          />
 
           {/* LIVE badge */}
           {(mic.isActive || webcam.isActive) && (
-            <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 rounded-full px-3 py-1.5">
+            <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 rounded-full px-3 py-1.5 pointer-events-none">
               <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
               <span className="text-white text-xs font-medium">LIVE</span>
             </div>
           )}
-
-          {/* 2D/3D badge */}
-          <div className="absolute top-3 left-3">
-            <button onClick={() => setUse3D(v => !v)}
-              className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all ${
-                use3D ? 'bg-indigo-600 text-white' : 'bg-black/50 text-gray-300 hover:bg-white/10'
-              }`}>
-              {use3D ? '3D' : '2D'}
-            </button>
-          </div>
 
           {/* Loading overlay */}
           {webcam.isLoading && (

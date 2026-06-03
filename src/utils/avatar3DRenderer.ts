@@ -362,40 +362,30 @@ function drawMouth3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, state:
 
 function buildHead(config: AvatarConfig): THREE.Group {
   const group = new THREE.Group();
-
-  // Anime head profile: chin (bottom) to crown (top)
-  const profile = [
-    new THREE.Vector2(0.01, -1.12),   // chin tip
-    new THREE.Vector2(0.25, -0.95),   // chin
-    new THREE.Vector2(0.55, -0.55),   // jaw
-    new THREE.Vector2(0.80,  0.02),   // cheek
-    new THREE.Vector2(0.96,  0.52),   // widest
-    new THREE.Vector2(1.02,  0.92),   // temple
-    new THREE.Vector2(0.94,  1.28),   // cranium
-    new THREE.Vector2(0.62,  1.52),   // near top
-    new THREE.Vector2(0.01,  1.58),   // crown
-  ];
-  const headGeo = new THREE.LatheGeometry(profile, 64);
-
   const skinHex = config.skinColor;
+
   const headMat = new THREE.MeshPhongMaterial({
     color: new THREE.Color(skinHex),
     shininess: 22,
-    specular: new THREE.Color(0.12, 0.08, 0.08),
+    specular: new THREE.Color(0.12, 0.08, 0.06),
   });
+
+  // Anime head: sphere compressed front-to-back, slightly tall/wide
+  const headGeo = new THREE.SphereGeometry(1, 64, 48);
   const head = new THREE.Mesh(headGeo, headMat);
+  head.scale.set(1.1, 1.15, 0.92);
   head.castShadow = true;
   head.receiveShadow = true;
   group.add(head);
 
-  // Anime outline (BackSide trick)
+  // Anime ink outline (BackSide trick, scaled up per-axis)
   const outlineMat = new THREE.MeshBasicMaterial({ color: 0x110820, side: THREE.BackSide });
   const outline = new THREE.Mesh(headGeo, outlineMat);
-  outline.scale.setScalar(1.035);
+  outline.scale.set(1.1 * 1.04, 1.15 * 1.04, 0.92 * 1.04);
   group.add(outline);
 
-  // Ears (small spheres at sides)
-  const earGeo = new THREE.SphereGeometry(0.16, 16, 16);
+  // Ears at the sphere equator sides
+  const earGeo = new THREE.SphereGeometry(0.18, 16, 16);
   for (const side of [-1, 1]) {
     const earMat = new THREE.MeshPhongMaterial({
       color: new THREE.Color(skinHex),
@@ -403,18 +393,17 @@ function buildHead(config: AvatarConfig): THREE.Group {
       specular: new THREE.Color(0.1, 0.06, 0.06),
     });
     const ear = new THREE.Mesh(earGeo, earMat);
-    ear.position.set(side * 0.96, 0.0, 0.06);
+    ear.position.set(side * 1.05, -0.08, 0.06);
     ear.castShadow = true;
     group.add(ear);
 
-    // Inner ear detail
-    const innerGeo = new THREE.SphereGeometry(0.09, 12, 12);
+    const innerGeo = new THREE.SphereGeometry(0.1, 12, 12);
     const innerMat = new THREE.MeshPhongMaterial({
       color: new THREE.Color(config.blushColor || '#f9a8d4'),
       shininess: 10,
     });
     const inner = new THREE.Mesh(innerGeo, innerMat);
-    inner.position.set(side * 1.02, 0.0, 0.1);
+    inner.position.set(side * 1.12, -0.08, 0.1);
     group.add(inner);
   }
 
@@ -827,7 +816,8 @@ export class Avatar3DRenderer {
     const facePlaneGeo = new THREE.PlaneGeometry(2.0, 2.0);
     const facePlaneMat = new THREE.MeshBasicMaterial({ map: this.faceTex, transparent: true, depthWrite: false });
     const facePlane = new THREE.Mesh(facePlaneGeo, facePlaneMat);
-    facePlane.position.set(0, 0.2, 0.94);
+    facePlane.renderOrder = 1;
+    facePlane.position.set(0, 0.15, 0.93);
     this.headGroup.add(facePlane);
 
     this.hairGroup = new THREE.Group();
@@ -900,7 +890,8 @@ export class Avatar3DRenderer {
     const facePlaneGeo = new THREE.PlaneGeometry(2.0, 2.0);
     const facePlaneMat = new THREE.MeshBasicMaterial({ map: this.faceTex, transparent: true, depthWrite: false });
     const facePlane = new THREE.Mesh(facePlaneGeo, facePlaneMat);
-    facePlane.position.set(0, 0.2, 0.94);
+    facePlane.renderOrder = 1;
+    facePlane.position.set(0, 0.15, 0.93);
     this.headGroup.add(facePlane);
 
     // Hair
