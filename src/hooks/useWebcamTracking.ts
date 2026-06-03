@@ -116,7 +116,16 @@ export function useWebcamTracking() {
       };
       rafRef.current = requestAnimationFrame(detect);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Webcam unavailable');
+      const name = e instanceof DOMException ? e.name : '';
+      if (name === 'NotReadableError' || name === 'TrackStartError') {
+        setError('Camera is in use by another app (Zoom, OBS, Teams…). Close it and try again.');
+      } else if (name === 'NotAllowedError') {
+        setError('Camera permission denied. Allow camera access in your browser settings.');
+      } else if (name === 'NotFoundError') {
+        setError('No camera found. Plug in a webcam and try again.');
+      } else {
+        setError(e instanceof Error ? e.message : 'Webcam unavailable');
+      }
       setIsLoading(false);
     }
   }, []);
