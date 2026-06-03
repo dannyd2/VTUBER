@@ -802,6 +802,11 @@ export class Avatar3DRenderer {
   private faceTex: THREE.CanvasTexture;
 
   private configSig = '';
+  private faceSig   = '';
+
+  // Cached tail/tuft mesh refs — populated in rebuildConfig to avoid per-frame traverse
+  private tailMeshes: THREE.Object3D[] = [];
+  private tuftMeshes: THREE.Object3D[] = [];
 
   private handGroups: THREE.Group[] = [];
   private handJoints: THREE.Mesh[][] = [];
@@ -925,16 +930,18 @@ export class Avatar3DRenderer {
     // Breathing
     this.rootGroup.position.y = Math.sin(state.breathPhase) * 0.04;
 
-    // Tail sway animation
+    // Tail sway — use cached refs instead of traversing scene every frame
     const sway = Math.sin(Date.now() / 800) * 0.25;
-    this.bonusGroup.traverse(child => {
-      if (child.userData.isTail) child.rotation.z = sway;
-      if (child.userData.isTuft) { child.rotation.z = sway * 1.2; child.position.x = 0.15 + sway * 0.3; }
-    });
+    for (const m of this.tailMeshes) m.rotation.z = sway;
+    for (const m of this.tuftMeshes) { m.rotation.z = sway * 1.2; m.position.x = 0.15 + sway * 0.3; }
 
-    // Redraw face canvas
-    drawFaceCanvas(this.faceCtx, config, state);
-    this.faceTex.needsUpdate = true;
+    // Redraw face canvas only when visible state has changed
+    const newFaceSig = `${state.expression}|${state.prevExpression}|${state.expressionBlend.toFixed(2)}|${state.blinkLeft.toFixed(2)}|${state.blinkRight.toFixed(2)}|${state.mouthOpen.toFixed(2)}|${state.viseme}|${state.tongueOut.toFixed(2)}|${state.eyeGazeX.toFixed(2)}|${state.eyeGazeY.toFixed(2)}`;
+    if (newFaceSig !== this.faceSig) {
+      this.faceSig = newFaceSig;
+      drawFaceCanvas(this.faceCtx, config, state);
+      this.faceTex.needsUpdate = true;
+    }
 
     this.updateHands(handLandmarks ?? null);
 
@@ -972,6 +979,14 @@ export class Avatar3DRenderer {
     // Bonus accessories (head-attached)
     this.bonusGroup = buildBonusAccessories(config);
     this.headGroup.add(this.bonusGroup);
+
+    // Cache tail/tuft refs so render() doesn't traverse every frame
+    this.tailMeshes = [];
+    this.tuftMeshes = [];
+    this.bonusGroup.traverse(child => {
+      if (child.userData.isTail) this.tailMeshes.push(child);
+      if (child.userData.isTuft) this.tuftMeshes.push(child);
+    });
 
     // Body (not head-attached — stays on rootGroup)
     while (this.bodyGroup.children.length > 0) {

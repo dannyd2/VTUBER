@@ -21,6 +21,8 @@ function detectExpression(cam: FaceTrackingData): Expression | null {
 
 const BLINK_TRANSITION = 0.08;
 const EXPRESSION_TRANSITION = 0.06;
+// React state updates throttled to ~15fps; renderer reads the hot ref at 60fps
+const UI_UPDATE_MS = 66;
 
 export function useAvatarAnimation({ micVolume, micViseme, webcamData, onStateUpdate, getState, autoExpression = false }: AnimationOptions) {
   const rafRef = useRef<number>(0);
@@ -40,6 +42,11 @@ export function useAvatarAnimation({ micVolume, micViseme, webcamData, onStateUp
     phase: 0,
     timer: 0,
   });
+
+  // Hot ref updated every 60fps frame — renderer reads this directly
+  const liveRef = useRef<AvatarLiveState>(getState());
+  const lastExprRef        = useRef<Expression>(getState().expression);
+  const lastReactUpdateRef = useRef(0);
 
   const tick = useCallback(() => {
     const now = Date.now();
@@ -107,7 +114,7 @@ export function useAvatarAnimation({ micVolume, micViseme, webcamData, onStateUp
       }
     }
 
-    onStateUpdate({
+    const newState: AvatarLiveState = {
       ...state,
       expression,
       prevExpression,
@@ -123,7 +130,18 @@ export function useAvatarAnimation({ micVolume, micViseme, webcamData, onStateUp
       headRotX,
       headRotY,
       tongueOut,
-    });
+    };
+
+    // Always update hot ref — Three.js renderer reads this at full 60fps
+    liveRef.current = newState;
+
+    // Throttle React state updates to ~15fps; always push on expression change
+    const exprChanged = expression !== lastExprRef.current;
+    lastExprRef.current = expression;
+    if (exprChanged || now - lastReactUpdateRef.current > UI_UPDATE_MS) {
+      lastReactUpdateRef.current = now;
+      onStateUpdate(newState);
+    }
 
     rafRef.current = requestAnimationFrame(tick);
   }, [getState, onStateUpdate]);
@@ -132,4 +150,6 @@ export function useAvatarAnimation({ micVolume, micViseme, webcamData, onStateUp
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
   }, [tick]);
+
+  return { liveRef };
 }

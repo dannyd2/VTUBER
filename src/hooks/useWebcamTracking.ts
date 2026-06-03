@@ -46,6 +46,7 @@ export function useWebcamTracking() {
   const videoRef      = useRef<HTMLVideoElement | null>(null);
   const rafRef        = useRef<number>(0);
   const lastTimeRef   = useRef(0);
+  const prevSmoothRef = useRef<Omit<FaceTrackingData, 'handLandmarks'> | null>(null);
   const smoothRef     = useRef<Omit<FaceTrackingData, 'handLandmarks'>>({
     blinkLeft: 0, blinkRight: 0, mouthOpen: 0, headTilt: 0,
     eyeGazeX: 0, eyeGazeY: 0, smile: 0, browRaise: 0, browFurrow: 0,
@@ -222,7 +223,24 @@ export function useWebcamTracking() {
             const a = k === 'tongueOut' ? 0.6 : α;
             s[k] = s[k] * (1 - a) + raw[k] * a;
           }
-          setData({ ...s, handLandmarks });
+          // Only update state when a value has meaningfully changed
+          const prev = prevSmoothRef.current;
+          const changed = !prev ||
+            Math.abs(s.mouthOpen   - prev.mouthOpen)   > 0.004 ||
+            Math.abs(s.blinkLeft   - prev.blinkLeft)   > 0.004 ||
+            Math.abs(s.blinkRight  - prev.blinkRight)  > 0.004 ||
+            Math.abs(s.eyeGazeX   - prev.eyeGazeX)    > 0.004 ||
+            Math.abs(s.eyeGazeY   - prev.eyeGazeY)    > 0.004 ||
+            Math.abs(s.headTilt   - prev.headTilt)     > 0.002 ||
+            Math.abs(s.headRotX   - prev.headRotX)     > 0.002 ||
+            Math.abs(s.headRotY   - prev.headRotY)     > 0.002 ||
+            Math.abs(s.smile      - prev.smile)        > 0.004 ||
+            Math.abs(s.tongueOut  - prev.tongueOut)    > 0.004 ||
+            handLandmarks !== null;
+          if (changed) {
+            prevSmoothRef.current = { ...s };
+            setData({ ...s, handLandmarks });
+          }
         }
       }
       rafRef.current = requestAnimationFrame(detect);

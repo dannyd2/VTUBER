@@ -57,7 +57,7 @@ export function LiveMode({ config }: Props) {
     stateRef.current = s;
   }, []);
 
-  useAvatarAnimation({
+  const { liveRef } = useAvatarAnimation({
     micVolume:  mic.isActive ? mic.volume : 0,
     micViseme:  mic.viseme,
     webcamData: webcam.isActive ? webcam.data : null,
@@ -105,6 +105,7 @@ export function LiveMode({ config }: Props) {
           <Avatar3DCanvas
             config={config}
             liveState={liveState}
+            liveStateRef={liveRef}
             width={400} height={500}
             handLandmarks={webcam.isActive ? webcam.data?.handLandmarks : null}
           />

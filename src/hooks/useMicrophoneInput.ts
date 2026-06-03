@@ -7,11 +7,13 @@ export function useMicrophoneInput() {
   const [viseme, setViseme] = useState<Viseme>('rest');
   const [isActive, setIsActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const audioCtxRef  = useRef<AudioContext | null>(null);
-  const analyserRef  = useRef<AnalyserNode | null>(null);
-  const analyzerRef  = useRef<VisemeAnalyzer | null>(null);
-  const streamRef    = useRef<MediaStream | null>(null);
-  const rafRef       = useRef<number>(0);
+  const audioCtxRef   = useRef<AudioContext | null>(null);
+  const analyserRef   = useRef<AnalyserNode | null>(null);
+  const analyzerRef   = useRef<VisemeAnalyzer | null>(null);
+  const streamRef     = useRef<MediaStream | null>(null);
+  const rafRef        = useRef<number>(0);
+  const prevVolRef    = useRef(0);
+  const prevVisemeRef = useRef<Viseme>('rest');
 
   const start = useCallback(async () => {
     try {
@@ -31,8 +33,14 @@ export function useMicrophoneInput() {
       const tick = () => {
         const result = analyzerRef.current?.analyze();
         if (result) {
-          setVolume(result.volume);
-          setViseme(result.viseme);
+          if (Math.abs(result.volume - prevVolRef.current) > 0.004) {
+            prevVolRef.current = result.volume;
+            setVolume(result.volume);
+          }
+          if (result.viseme !== prevVisemeRef.current) {
+            prevVisemeRef.current = result.viseme;
+            setViseme(result.viseme);
+          }
         }
         rafRef.current = requestAnimationFrame(tick);
       };
@@ -50,6 +58,8 @@ export function useMicrophoneInput() {
     analyserRef.current = null;
     analyzerRef.current = null;
     streamRef.current = null;
+    prevVolRef.current    = 0;
+    prevVisemeRef.current = 'rest';
     setIsActive(false);
     setVolume(0);
     setViseme('rest');
