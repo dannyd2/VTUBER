@@ -203,7 +203,7 @@ export function useWebcamTracking() {
           const raw: Omit<FaceTrackingData, 'handLandmarks'> = {
             blinkLeft:  get('eyeBlinkLeft'),
             blinkRight: get('eyeBlinkRight'),
-            mouthOpen:  get('jawOpen'),
+            mouthOpen:  Math.min(1, get('jawOpen') * 2.2),
             headTilt,
             eyeGazeX,
             eyeGazeY,

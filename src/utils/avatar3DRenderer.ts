@@ -318,7 +318,7 @@ function drawMouth3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, state:
   else if (v === 'oo') { wMod = 0.55; hMod = 0.9; }
   else if (v === 'mm') { wMod = 0.9; hMod = 0; }
 
-  const openH = R * 0.16 * effectiveMouthOpen * hMod;
+  const openH = R * 0.30 * effectiveMouthOpen * hMod;
   const effectiveW = mW * wMod;
   const curveY = my + curvature * R * 0.22;
 
@@ -337,7 +337,7 @@ function drawMouth3D(ctx: CanvasRenderingContext2D, config: AvatarConfig, state:
     ctx.fillStyle = '#6b1a33'; ctx.fill();
 
     // Teeth
-    if (effectiveMouthOpen > 0.2 && v !== 'oo') {
+    if (effectiveMouthOpen > 0.1 && v !== 'oo') {
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(mcx - effectiveW / 2, my);

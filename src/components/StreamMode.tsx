@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AvatarConfig, AvatarLiveState, Expression, BackgroundStyle } from '../types/avatar';
 import { DEFAULT_LIVE_STATE } from '../types/avatar';
-import { AvatarCanvas } from './AvatarCanvas';
+import { Avatar3DCanvas } from './Avatar3DCanvas';
 import { useMicrophoneInput } from '../hooks/useMicrophoneInput';
 import { useAvatarAnimation } from '../hooks/useAvatarAnimation';
-import { ParticleSystem, EXPRESSION_PARTICLES } from '../utils/particleSystem';
 
 interface Props { config: AvatarConfig }
 
@@ -41,7 +40,6 @@ export function StreamMode({ config }: Props) {
   stateRef.current = liveState;
 
   const mic = useMicrophoneInput();
-  const particles = useRef(new ParticleSystem()).current;
 
   const getState = useCallback(() => stateRef.current, []);
   const handleStateUpdate = useCallback((s: AvatarLiveState) => {
@@ -65,18 +63,15 @@ export function StreamMode({ config }: Props) {
         setLiveState(prev => {
           const next = { ...prev, prevExpression: prev.expression, expression: value, expressionBlend: 0 };
           stateRef.current = next;
-          const p = EXPRESSION_PARTICLES[value];
-          if (p) particles.emit(225, 180, p.type, p.count, p.color);
           return next;
         });
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [particles]);
+  }, []);
 
   const exportPNG = useCallback(() => {
-    // Find the canvas inside the avatar area
     const canvas = document.querySelector<HTMLCanvasElement>('#stream-canvas canvas');
     if (!canvas) return;
     const link = document.createElement('a');
@@ -103,14 +98,12 @@ export function StreamMode({ config }: Props) {
             transformOrigin: 'top left',
           }}
         >
-          <AvatarCanvas
-            config={config}
+          <Avatar3DCanvas
+            config={{ ...config, background: bgStyle }}
             liveState={liveState}
-            transparent={isTransparent}
-            backgroundStyle={bgStyle}
-            particles={particles}
             width={450}
             height={560}
+            handLandmarks={null}
           />
         </div>
 
