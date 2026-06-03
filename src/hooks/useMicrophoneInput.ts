@@ -1,47 +1,43 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { VisemeAnalyzer } from '../utils/visemeAnalyzer';
+import type { Viseme } from '../types/avatar';
 
 export function useMicrophoneInput() {
   const [volume, setVolume] = useState(0);
+  const [viseme, setViseme] = useState<Viseme>('rest');
   const [isActive, setIsActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const rafRef = useRef<number>(0);
-  const smoothedRef = useRef(0);
+  const audioCtxRef  = useRef<AudioContext | null>(null);
+  const analyserRef  = useRef<AnalyserNode | null>(null);
+  const analyzerRef  = useRef<VisemeAnalyzer | null>(null);
+  const streamRef    = useRef<MediaStream | null>(null);
+  const rafRef       = useRef<number>(0);
 
   const start = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       streamRef.current = stream;
-
       const ctx = new AudioContext();
       audioCtxRef.current = ctx;
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
       analyserRef.current = analyser;
-
+      analyzerRef.current = new VisemeAnalyzer(analyser);
       const source = ctx.createMediaStreamSource(stream);
       source.connect(analyser);
-
       setIsActive(true);
       setError(null);
 
       const tick = () => {
-        const data = new Uint8Array(analyser.fftSize);
-        analyser.getByteTimeDomainData(data);
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) {
-          const v = (data[i] - 128) / 128;
-          sum += v * v;
+        const result = analyzerRef.current?.analyze();
+        if (result) {
+          setVolume(result.volume);
+          setViseme(result.viseme);
         }
-        const rms = Math.sqrt(sum / data.length);
-        smoothedRef.current = smoothedRef.current * 0.72 + rms * 0.28;
-        setVolume(Math.min(1, smoothedRef.current * 6.5));
         rafRef.current = requestAnimationFrame(tick);
       };
       rafRef.current = requestAnimationFrame(tick);
-    } catch (e) {
+    } catch {
       setError('Microphone access denied');
     }
   }, []);
@@ -52,13 +48,14 @@ export function useMicrophoneInput() {
     audioCtxRef.current?.close();
     audioCtxRef.current = null;
     analyserRef.current = null;
+    analyzerRef.current = null;
     streamRef.current = null;
     setIsActive(false);
     setVolume(0);
-    smoothedRef.current = 0;
+    setViseme('rest');
   }, []);
 
-  useEffect(() => () => { stop(); }, [stop]);
+  useEffect(() => () => stop(), [stop]);
 
-  return { volume, isActive, error, start, stop };
+  return { volume, viseme, isActive, error, start, stop };
 }
